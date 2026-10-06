@@ -15,12 +15,12 @@ st.markdown('Utilizando Processamento de Linguagem Natural (NLP) otimizado com N
 @st.cache_resource
 def carregar_recursos():
     try:
-        # Usando caminhos de arquivo absolutos para garantir leitura no Colab
-        modelo = joblib.load('/content/modelo_jornalismo.pkl')
-        database = joblib.load('/content/database_sugestoes.pkl')
+        # Leitura puramente relativa voltada exclusivamente para a raiz do repositório no GitHub / Streamlit Cloud
+        modelo = joblib.load('modelo_jornalismo.pkl')
+        database = joblib.load('database_sugestoes.pkl')
         return modelo, database
     except Exception as e:
-        st.sidebar.error(f"Erro ao ler arquivos: {e}")
+        st.sidebar.error(f"Erro de leitura na nuvem: {e}")
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
@@ -35,7 +35,7 @@ referencias_goias = {
 }
 
 if modelo_local is None:
-    st.error('❌ Erro ao carregar os componentes de NLP. Execute o treinamento no notebook ou verifique se os arquivos pkl estão em /content/')
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl de forma relativa. Verifique se eles estão na raiz do seu repositório no GitHub!')
 else:
     tema_escolhido = st.selectbox(
         'Escolha a categoria da matéria jurídica:',
@@ -54,7 +54,7 @@ else:
     if st.button('Auditar Texto com Alta Precisão', type='primary'):
         if not texto_materia.strip():
             st.warning('Por favor, digite algum texto para análise.')
-        else:
+        else: 
             sentencas = [s.strip() for s in re.split(r'[.!?\n]+', texto_materia) if len(s.strip()) > 5]
 
             st.subheader('📊 Relatório de Auditoria de Linguagem')
