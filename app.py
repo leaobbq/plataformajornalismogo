@@ -2,6 +2,7 @@ import streamlit as st
 import joblib
 import re
 import pandas as pd
+import unicodedata
 
 st.set_page_config(
     page_title='Revisor Ultra Assertivo TJGO',
@@ -10,12 +11,21 @@ st.set_page_config(
 )
 
 st.title('⚖️ Copiloto de Redação & Revisor de Alta Precisão - TJGO')
-st.markdown('Utilizando Processamento de Linguagem Natural (NLP) otimizado com N-gramas e normalização de texto para garantir a máxima integridade técnica nas coberturas do TJGO.')
+st.markdown('Utilizando Processamento de Linguagem Natural (NLP) otimizado para garantir a máxima integridade técnica nas coberturas do TJGO.')
+
+# Função de normalização idêntica à de treino para pré-processar as sentenças inseridas na UI
+def normalizar_texto_local(texto):
+    if not isinstance(texto, str):
+        return ""
+    texto = texto.lower()
+    texto = "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    texto = re.sub(r'[^a-zA-Z0-9\s]', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    return texto
 
 @st.cache_resource
 def carregar_recursos():
     try:
-        # Leitura puramente relativa voltada exclusivamente para a raiz do repositório no GitHub / Streamlit Cloud
         modelo = joblib.load('modelo_jornalismo.pkl')
         database = joblib.load('database_sugestoes.pkl')
         return modelo, database
@@ -54,14 +64,16 @@ else:
     if st.button('Auditar Texto com Alta Precisão', type='primary'):
         if not texto_materia.strip():
             st.warning('Por favor, digite algum texto para análise.')
-        else: 
+        else:
             sentencas = [s.strip() for s in re.split(r'[.!?\n]+', texto_materia) if len(s.strip()) > 5]
 
             st.subheader('📊 Relatório de Auditoria de Linguagem')
 
             alertas_detectados = 0
             for s in sentencas:
-                probabilidades = modelo_local.predict_proba([s])[0]
+                # Normaliza a sentença inserida antes de enviar ao TfidfVectorizer do modelo
+                sentenca_limpa = normalizar_texto_local(s)
+                probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
                 percentual_sensibilidade = probabilidades[1]
 
                 if percentual_sensibilidade >= 0.65:
@@ -72,8 +84,8 @@ else:
                     if db_sugestoes is not None:
                         snippet = s[:15]
                         match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(snippet), na=False, case=False)]
-                        if not match.empty and match.iloc[0]['sugestao'] is not None:
-                            sugestao = match.iloc[0]['sugestao']
+                        if not match.empty and match.iloc[0]['sugestao’] is not None:
+                            sugestao = match.iloc[0]['sugestao’]
 
                     if sugestao:
                         st.success(f'💡 **Sugestão de Reescrita Recomendada:** {sugestao}')
