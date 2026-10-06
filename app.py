@@ -51,7 +51,7 @@ modelos_textos_base = {
         "respeitando rigorosamente a ordem cronológica e os aportes financeiros estabelecidos pelo ente devedor estatal."
     ),
     'Alterações no Projudi': (
-        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrotou períodos de oscilação técnica. "
+        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrou períodos de oscilação técnica. "
         "Para mitigar eventuais prejuízos aos prazos processuais da advocacia, o Tribunal emitiu certidão de indisponibilidade oficial e decretou de forma automática a prorrogação dos prazos."
     ),
     'Precedentes Judiciais': (
@@ -71,9 +71,7 @@ modelos_textos_base = {
         "evitando expressões ambíguas, preciosismo vocabular ou jargões informais que dificultem a compreensão do cidadão."
     ),
     'Violência contra a Mulher': (
-        "A polícia civil abriu inquérito para investigar o crime sob a tipificação penal de feminicídio. "
-        "---
-📞 Se você ou alguém próximo vivencia situações de violência doméstica, denuncie: ligue de forma gratuita e anônima para o Ligue 180 ou acione a Polícia Militar pelo 190."
+        "A polícia civil abriu inquérito para investigar o crime sob a tipificação penal de feminicídio. Ligue 180 para apoio e denúncias de violência doméstica."
     )
 }
 
