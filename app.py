@@ -5,13 +5,13 @@ import pandas as pd
 import unicodedata
 
 st.set_page_config(
-    page_title='Revisor Ultra Assertivo TJGO',
+    page_title='Revisor Analítico TJGO - Padrão Gemini',
     page_icon='⚖️',
     layout='wide'
 )
 
-st.title('⚖️ Copiloto de Redação & Revisor de Alta Precisão - TJGO')
-st.markdown('Utilizando Processamento de Linguagem Natural (NLP) otimizado para garantir a máxima integridade técnica nas coberturas do TJGO.')
+st.title('⚖️ Copiloto Analítico de Redação - Padrão Gemini (TJGO)')
+st.markdown('Esta aplicação realiza a auditoria avançada de rascunhos de matérias dividindo as avaliações de sensibilidade, justificativas e regras de redação do TJGO.')
 
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
@@ -29,18 +29,19 @@ def carregar_recursos():
         database = joblib.load('database_sugestoes.pkl')
         return modelo, database
     except Exception as e:
-        st.sidebar.error(f"Erro de leitura na nuvem: {e}")
+        st.sidebar.error(f"Erro de leitura de dados: {e}")
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
 
 referencias_goias = {
-    'Precatórios': '[TJGO - Portal de Precatórios Oficiais](https://www.tjgo.jus.br/index.php/precatorios)',
-    'Alterações no Projudi': '[TJGO - Sistemas, Manuais e Avisos de Indisponibilidade](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
-    'Precedentes Judiciais': '[TJGO - Consulta Unificada de Jurisprudência e Súmulas](https://www.tjgo.jus.br/index.php/jurisprudencia)',
-    'Saúde Técnica': '[TJGO - Comitê Estadual de Saúde e Pareceres do NATJUS](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
-    'Tecnologia': '[TJGO - Centro de Inteligência e Projetos de Inovação](https://www.tjgo.jus.br/index.php/centro-de-inteligencia)',
-    'Violência contra a Mulher': '[TJGO - Coordenadoria Estadual da Mulher](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
+    'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
+    'Alterações no Projudi': '[Sistemas e Portarias de Indisponibilidade do Projudi](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
+    'Precedentes Judiciais': '[Jurisprudência Unificada e Súmulas do TJGO](https://www.tjgo.jus.br/index.php/jurisprudencia)',
+    'Saúde Técnica': '[Comitê de Saúde do NATJUS de Goiás](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
+    'Tecnologia': '[Estratégia Brasileira de IA (MCTI)](https://www.gov.br/mcti/pt-br) | [Diretrizes de IA na Justiça (CNJ - Resolução 332)](https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/inteligencia-artificial/)',
+    'Língua Portuguesa': '[Manual de Redação da Presidência da República](https://www.gov.br/planalto/pt-br/acompanhe-o-planalto/manuais) | [Manual de Comunicação do Senado](https://www12.senado.leg.br/manualdecomunicacao) | [Vocabulário Ortográfico da ABL](https://www.academia.org.br/nossa-lingua/busca-no-vocabulario)',
+    'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
 modelos_textos_base = {
@@ -50,100 +51,118 @@ modelos_textos_base = {
         "respeitando rigorosamente a ordem cronológica e os aportes financeiros estabelecidos pelo ente devedor estatal."
     ),
     'Alterações no Projudi': (
-        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrou períodos de oscilação técnica. "
+        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrotou períodos de oscilação técnica. "
         "Para mitigar eventuais prejuízos aos prazos processuais da advocacia, o Tribunal emitiu certidão de indisponibilidade oficial e decretou de forma automática a prorrogação dos prazos."
     ),
     'Precedentes Judiciais': (
         "Em decisão recente proferida pela Seção Cível do Tribunal de Justiça de Goiás (TJGO), fixou-se tese em sede de Incidente de Resolução de Demandas Repetitivas (IRDR). "
-        "O entendimento uniformiza as decisões de primeira instância no estado de Goiás sobre [inserir tema específico do processo] e servirá como precedente obrigatório para casos análogos."
+        "O entendimento uniformiza as decisões de primeira instância no estado de Goiás e servirá como precedente obrigatório para os casos análogos."
     ),
     'Saúde Técnica': (
         "O Poder Judiciário goiano acolheu, em caráter liminar, o pedido para fornecimento de tratamento de saúde especializado na comarca de Goiânia. "
         "Na decisão, o magistrado fundamentou a necessidade do fornecimento com base no parecer técnico favorável emitido pelo Núcleo de Apoio Técnico do Judiciário (NATJUS), garantindo segurança baseada em evidência científica."
     ),
     'Tecnologia': (
-        "O Centro de Inteligência do TJGO iniciou o piloto de uma nova ferramenta de automação por Inteligência Artificial voltada à triagem prévia de processos em massa. "
-        "A tecnologia funciona de forma estritamente auxiliar ao fluxo de trabalho, mantendo todas as etapas de julgamento sob supervisão, revisão direta e assinatura do magistrado competente."
+        "O Tribunal de Justiça do Estado de Goiás (TJGO) adota modelos de Inteligência Artificial para apoiar a triagem e automação de tarefas administrativas. "
+        "Em linha com a Resolução 332 do CNJ e a Estratégia Brasileira de IA, todos os relatórios e minutas gerados passam obrigatoriamente por validação, revisão e assinatura de magistrados humanos."
+    ),
+    'Língua Portuguesa': (
+        "De acordo com o Manual de Redação da Presidência da República, os textos jornalísticos e informativos institucionais devem ser regidos pelos princípios de impessoalidade, clareza e concisão, "
+        "evitando expressões ambíguas, preciosismo vocabular ou jargões informais que dificultem a compreensão do cidadão."
     ),
     'Violência contra a Mulher': (
-        "O Ministério Público de Goiás, em atuação conjunta com a Coordenadoria Estadual da Mulher do TJGO, formalizou a denúncia contra o suspeito de agressão na comarca de [Cidade]. "
-        "O juízo deferiu de imediato medidas protetivas de urgência previstas na Lei Maria da Penha para afastar o agressor e garantir a integridade da vítima. "
-        "---\n📞 Se você ou alguém próximo vivencia situações de violência doméstica, denuncie: ligue de forma gratuita e anônima para o Ligue 180 ou acione a Polícia Militar pelo 190."
+        "A polícia civil abriu inquérito para investigar o crime sob a tipificação penal de feminicídio. "
+        "---
+📞 Se você ou alguém próximo vivencia situações de violência doméstica, denuncie: ligue de forma gratuita e anônima para o Ligue 180 ou acione a Polícia Militar pelo 190."
     )
 }
 
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl.')
+    st.error('❌ Não foi possível carregar os artefatos de Inteligência Artificial (.pkl).')
 else:
-    aba_auditoria, aba_modelagem = st.tabs(['🔍 Auditoria e Revisão de Texto', '💡 Gerador de Sugestões / Textos Base'])
+    aba_auditoria, aba_modelos = st.tabs(['🔍 Auditoria e Revisão de Texto', '💡 Gerador de Sugestões / Textos Base'])
 
     with aba_auditoria:
-        st.header('Revisão e Análise Automática de Parágrafos')
+        st.header('Auditoria e Feedback Estilo Gemini')
         tema_escolhido = st.selectbox(
-            'Escolha a categoria da matéria jurídica para auditar:',
-            ['Geral', 'Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Violência contra a Mulher']
+            'Selecione a categoria da pauta para direcionar as referências:',
+            ['Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Língua Portuguesa', 'Violência contra a Mulher']
         )
 
         if tema_escolhido in referencias_goias:
-            st.info(f'📚 **Fonte Técnica de Consulta recomendada para Goiás:** {referencias_goias[tema_escolhido]}')
+            st.info(f'📚 **Documentações Oficiais de Apoio para {tema_escolhido}:** {referencias_goias[tema_escolhido]}')
 
         texto_materia = st.text_area(
-            'Insira a matéria completa ou o rascunho de parágrafo:',
-            placeholder='Escreva aqui o rascunho para submeter à auditoria avançada...',
+            'Cole o seu rascunho de matéria jornalística aqui:',
+            placeholder='Insira o rascunho da sua reportagem...',
             height=250
         )
 
-        if st.button('Auditar Texto com Alta Precisão', type='primary'):
+        if st.button('Iniciar Auditoria de Risco e Linguagem', type='primary'):
             if not texto_materia.strip():
-                st.warning('Por favor, digite algum texto para análise.')
+                st.warning('Por favor, digite ou cole um texto antes de analisar.')
             else:
-                sentencas = [s.strip() for s in re.split(r'[.!?\n]+', texto_materia) if len(s.strip()) > 5]
+                sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
 
-                st.subheader('📊 Relatório de Auditoria de Linguagem')
+                st.subheader('📋 Relatório Analítico de Redação')
 
-                alertas_detectados = 0
+                alertas = 0
                 for s in sentencas:
                     sentenca_limpa = normalizar_texto_local(s)
                     probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
-                    percentual_sensibilidade = probabilidades[1]
+                    score_sensibilidade = probabilidades[1]
 
-                    if percentual_sensibilidade >= 0.65:
-                        alertas_detectados += 1
-                        st.error(f'🚨 **RISCO CRÍTICO ({percentual_sensibilidade:.1%}):** {s}')
+                    if score_sensibilidade >= 0.40:
+                        alertas += 1
+                        risco = "🚨 RISCO CRÍTICO" if score_sensibilidade >= 0.65 else "⚠️ RISCO MODERADO"
+                        cor = "red" if score_sensibilidade >= 0.65 else "orange"
 
+                        st.markdown(f'<p style="color:{cor}; font-size:18px; font-weight:bold;">{risco} ({score_sensibilidade:.1%}): "{s}"</p>', unsafe_allow_html=True)
+
+                        # Busca exata ou aproximada por sugestões no database
                         sugestao = None
+                        justificativa = None
                         if db_sugestoes is not None:
-                            snippet = s[:15]
-                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(snippet), na=False, case=False)]
-                            if not match.empty and match.iloc[0]['sugestao'] is not None:
+                            fragmento = s[:15]
+                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
+                            if not match.empty:
                                 sugestao = match.iloc[0]['sugestao']
+                                justificativa = match.iloc[0]['justificativa']
+
+                        # Retorno estruturado imitando o Gemini (Problema + Correção)
+                        st.markdown("**❌ O que está errado:**")
+                        if justificativa:
+                            st.write(justificativa)
+                        else:
+                            if tema_escolhido == 'Violência contra a Mulher':
+                                st.write("O trecho pode ferir as diretrizes do Manual Universa ao utilizar justificativas sentimentais para crimes (como ciúmes), usar termos desatualizados ou faltar a indicação do Ligue 180.")
+                            elif tema_escolhido == 'Tecnologia':
+                                st.write("O texto apresenta risco ao sugerir que a tecnologia decide sentenças de forma isolada, violando as regras éticas da Resolução 332 do CNJ.")
+                            elif tema_escolhido == 'Língua Portuguesa':
+                                st.write("Há forte indício de desvios gramaticais de concordância, regência ou de estilo prolixo inadequado para redações jornalísticas ou oficiais.")
+                            else:
+                                st.write("O trecho apresenta termos sensacionalistas, falta de neutralidade ou acusações sem apresentação de provas factuais.")
 
                         if sugestao:
-                            st.success(f'💡 **Sugestão de Reescrita Recomendada:** {sugestao}')
+                            st.markdown(f"**✨ Sugestão de Reescrita Correta:** `{sugestao}`")
                         else:
-                            st.info('💡 **Recomendação:** Remova julgamentos de valor, evite culpar partes e apoie-se estritamente na redação processual do TJGO.')
+                            st.markdown("**✨ Recomendação Geral:** Readequar a linguagem para termos técnicos-jurídicos neutros de acordo com o Manual do Senado Federal, removendo adjetivos pessoais ou termos coloquiais.")
                         st.write('---')
 
-                    elif percentual_sensibilidade >= 0.45:
-                        alertas_detectados += 1
-                        st.warning(f'⚠️ **RISCO MODERADO ({percentual_sensibilidade:.1%}):** {s}')
-                        st.info('💡 **Aviso:** O texto está próximo da linha da parcialidade ou utiliza termos vagos. Certifique-se de citar as fontes oficiais e o andamento processual correto do tribunal.')
-                        st.write('---')
+                if alertas == 0:
+                    st.success('✅ **Excelente!** O rascunho analisado atende perfeitamente ao tom neutro, isento e com a terminologia recomendada de acordo com as regras de redação da editoria e do TJGO.')
 
-                if alertas_detectados == 0:
-                    st.success('✅ **Excelente!** O texto passou na nossa auditoria avançada. Mantém integridade técnica absoluta e linguagem ética recomendada pelo TJGO.')
-
-    with aba_modelagem:
+    with aba_modelos:
         st.header('💡 Sugestão de Textos e Modelos de Redação')
-        st.write('Selecione uma categoria abaixo para obter um texto-modelo estruturado de forma imparcial, clara e perfeitamente ajustada às boas práticas do jornalismo e do TJGO.')
+        st.write('Selecione uma categoria abaixo para obter um texto-modelo estruturado de forma imparcial, clara e perfeitamente ajustada às boas práticas do jornalismo.')
 
         tema_modelo = st.selectbox(
             'Selecione o tema para gerar a sugestão de redação:',
-            ['Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Violência contra a Mulher']
+            ['Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Língua Portuguesa', 'Violência contra a Mulher']
         )
 
         if tema_modelo in modelos_textos_base:
             st.subheader(f'📝 Modelo de Redação Recomendado: {tema_modelo}')
             texto_sugerido = modelos_textos_base[tema_modelo]
             st.text_area('Copie o texto base sugerido abaixo:', value=texto_sugerido, height=180)
-            st.info('👉 **Nota para o jornalista:** Lembre-se de substituir os dados genéricos pelos fatos reais apurados.')
+            st.info('👉 **Nota para o jornalista:** Lembre-se de substituir ou complementar os detalhes com as informações da sua apuração.')
