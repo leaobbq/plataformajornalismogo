@@ -15,10 +15,12 @@ st.markdown('Utilizando Processamento de Linguagem Natural (NLP) otimizado com N
 @st.cache_resource
 def carregar_recursos():
     try:
-        modelo = joblib.load('modelo_jornalismo.pkl')
-        database = joblib.load('database_sugestoes.pkl')
+        # Usando caminhos de arquivo absolutos para garantir leitura no Colab
+        modelo = joblib.load('/content/modelo_jornalismo.pkl')
+        database = joblib.load('/content/database_sugestoes.pkl')
         return modelo, database
-    except:
+    except Exception as e:
+        st.sidebar.error(f"Erro ao ler arquivos: {e}")
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
@@ -33,7 +35,7 @@ referencias_goias = {
 }
 
 if modelo_local is None:
-    st.error('❌ Erro ao carregar os componentes de NLP. Execute o treinamento no notebook.')
+    st.error('❌ Erro ao carregar os componentes de NLP. Execute o treinamento no notebook ou verifique se os arquivos pkl estão em /content/')
 else:
     tema_escolhido = st.selectbox(
         'Escolha a categoria da matéria jurídica:',
@@ -53,26 +55,21 @@ else:
         if not texto_materia.strip():
             st.warning('Por favor, digite algum texto para análise.')
         else:
-            # Quebra inteligente por pontuações de fim de frase
             sentencas = [s.strip() for s in re.split(r'[.!?\n]+', texto_materia) if len(s.strip()) > 5]
 
             st.subheader('📊 Relatório de Auditoria de Linguagem')
 
             alertas_detectados = 0
             for s in sentencas:
-                # Obter a probabilidade do modelo preditivo calibrado
                 probabilidades = modelo_local.predict_proba([s])[0]
                 percentual_sensibilidade = probabilidades[1]
 
-                # Definindo faixas inteligentes de risco
                 if percentual_sensibilidade >= 0.65:
                     alertas_detectados += 1
                     st.error(f'🚨 **RISCO CRÍTICO ({percentual_sensibilidade:.1%}):** {s}')
 
-                    # Procura sugestão refinada no banco
                     sugestao = None
                     if db_sugestoes is not None:
-                        # Busca uma parte do texto de forma robusta
                         snippet = s[:15]
                         match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(snippet), na=False, case=False)]
                         if not match.empty and match.iloc[0]['sugestao'] is not None:
