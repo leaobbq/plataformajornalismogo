@@ -84,8 +84,8 @@ else:
                     if db_sugestoes is not None:
                         snippet = s[:15]
                         match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(snippet), na=False, case=False)]
-                        if not match.empty and match.iloc[0]['sugestao’] is not None:
-                            sugestao = match.iloc[0]['sugestao’]
+                        if not match.empty and match.iloc[0]['sugestao'] is not None:
+                            sugestao = match.iloc[0]['sugestao']
 
                     if sugestao:
                         st.success(f'💡 **Sugestão de Reescrita Recomendada:** {sugestao}')
