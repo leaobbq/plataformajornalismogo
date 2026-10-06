@@ -4,17 +4,23 @@ import re
 import pandas as pd
 import unicodedata
 import os
+from google import genai
+from google.genai import types
 
 st.set_page_config(
-    page_title='Revisor Analítico TJGO - Padrão Gemini',
+    page_title='Copiloto Editorial TJGO & Gemini',
     page_icon='⚖️',
     layout='wide'
 )
 
-st.title('⚖️ Copiloto Analítico de Redação - Padrão Gemini (TJGO)')
-st.markdown('Esta aplicação realiza a auditoria avançada de rascunhos de matérias dividindo as avaliações de sensibilidade, justificativas e regras de redação do TJGO.')
+st.title('⚖️ Copiloto de Redação & Revisor de Alta Precisão (TJGO + Gemini Pro)')
+st.markdown('Esta aplicação une a velocidade de um classificador de Machine Learning local à inteligência analítica profunda do **Google Gemini** para auditar e reescrever matérias jornalísticas.')
 
-# Função local de normalização que limpa a frase antes de enviar ao modelo preditor
+# Barra lateral para configuração segura da API Key pelo próprio usuário
+st.sidebar.header('🔑 Configuração da API do Gemini')
+api_key_input = st.sidebar.text_input('Insira sua GOOGLE_API_KEY:', type='password', help='Sua chave de API fica salva apenas na sessão do seu navegador e não é compartilhada.')
+
+# Função local de normalização para o classificador leve
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
         return ""
@@ -27,19 +33,10 @@ def normalizar_texto_local(texto):
 @st.cache_resource
 def carregar_recursos():
     try:
-        modelo_path = '/content/modelo_jornalismo.pkl'
-        database_path = '/content/database_sugestoes.pkl'
-
-        if not os.path.exists(modelo_path):
-            modelo_path = 'modelo_jornalismo.pkl'
-        if not os.path.exists(database_path):
-            database_path = 'database_sugestoes.pkl'
-
-        modelo = joblib.load(modelo_path)
-        database = joblib.load(database_path)
+        modelo = joblib.load('modelo_jornalismo.pkl')
+        database = joblib.load('database_sugestoes.pkl')
         return modelo, database
-    except Exception as e:
-        st.sidebar.error(f"Erro de leitura de dados: {e}")
+    exceptException as e:
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
@@ -48,77 +45,88 @@ referencias_goias = {
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
     'Alterações no Projudi': '[Sistemas e Portarias de Indisponibilidade do Projudi](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
     'Precedentes Judiciais': '[Jurisprudência Unificada e Súmulas do TJGO](https://www.tjgo.jus.br/index.php/jurisprudencia)',
-    'Saúde Técnico': '[Comitê de Saúde do NATJUS de Goiás](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
+    'Saúde Técnica': '[Comitê de Saúde do NATJUS de Goiás](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
     'Tecnologia': '[Estratégia Brasileira de IA (MCTI)](https://www.gov.br/mcti/pt-br) | [Diretrizes de IA na Justiça (CNJ - Resolução 332)](https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/inteligencia-artificial/)',
-    'Língua Portuguesa': '[Manual de Redação da Presidência da República](https://www.gov.br/planalto/pt-br/acompanhe-o-planalto/manuais) | [Manual de Comunicação do Senado](https://www12.senado.leg.br/manualdecomunicacao) | [Vocabulário Ortográfico da ABL](https://www.academia.org.br/nossa-lingua/busca-no-vocabulario)',
+    'Língua Portuguesa': '[Manual de Redação da Presidência da República](https://www.gov.br/planalto/pt-br/acompanhe-o-planalto/manuais) | [Manual de Comunicação do Senado](https://www12.senado.leg.br/manualdecomunicacao)',
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
+# 1. Prompt de Instrução de Sistema avançada para moldar a IA como Editor Sênior
+prompt_sistema_editorial = (
+    "Você é um Editor de Redação Sênior e Revisor de Ética Jornalística com vasta experiência em coberturas institucionais, "
+    "diretrizes de gênero do Manual Universa e regulação do Tribunal de Justiça de Goiás (TJGO).\n"
+    "Sua tarefa é analisar o rascunho de texto jornalístico fornecido pelo usuário e entregar uma avaliação técnica extremamente didática, ricas em detalhes, que melhore a escrita do jornalista.\n\n"
+    "Para o texto fornecido, estruture sua resposta exatamente com os seguintes tópicos bem definidos:\n"
+    "1. 🔴 **Trechos Inadequados ou Sensíveis**: Identifique frases exatas do texto que contenham problemas (sensacionalismo, acusações sem provas, culpabilização da vítima no caso de violência de gênero, preconceitos sobre inteligência artificial no judiciário, jargões excessivos ou erros de concordância). Justifique o porquê de cada um.\n"
+    "2. 📚 **Alinhamento com Diretrizes**: Explique quais regras de redação (do TJGO, do CNJ, do Manual de Redação Oficial ou do Manual Universa) devem ser aplicadas para resolver o impasse do trecho.\n"
+    "3. ✨ **Versão Sugerida de Redação**: Apresente uma reescrita polida, fluida, perfeitamente clara, de tom totalmente profissional, imparcial e neutro, mantendo os fatos originais e o rigor técnico jurídico."
+)
+
 if modelo_local is None:
-    st.error('❌ Não foi possível carregar os artefatos de Inteligência Artificial (.pkl).')
+    st.error('❌ Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl.')
 else:
-    aba_auditoria, aba_modelos = st.tabs(['🔍 Auditoria e Revisão de Texto', '💡 Gerador de Sugestões / Textos Base'])
+    aba_auditoria, aba_ajuda = st.tabs(['🔍 Auditoria Completa', '📚 Fontes & Referências'])
 
     with aba_auditoria:
-        st.header('Auditoria e Feedback Estilo Gemini')
         tema_escolhido = st.selectbox(
             'Selecione a categoria da pauta para direcionar as referências:',
-            ['Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnico', 'Tecnologia', 'Língua Portuguesa', 'Violência contra a Mulher']
+            ['Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Língua Portuguesa', 'Violência contra a Mulher']
         )
-
-        if tema_escolhido in referencias_goias:
-            st.info(f'📚 **Documentações Oficiais de Apoio para {tema_escolhido}:** {referencias_goias[tema_escolhido]}')
 
         texto_materia = st.text_area(
-            'Cole o seu rascunho de matéria jornalística aqui:',
-            placeholder='Insira o rascunho da sua reportagem...',
-            height=250
+            'Insira o rascunho da notícia para revisão:',
+            placeholder='Cole o parágrafo ou texto completo da reportagem...',
+            height=200
         )
 
-        if st.button('Iniciar Auditoria de Risco e Linguagem', type='primary'):
+        if st.button('Iniciar Auditoria Inteligente', type='primary'):
             if not texto_materia.strip():
                 st.warning('Por favor, digite ou cole um texto antes de analisar.')
             else:
                 sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
+                st.subheader('📊 Diagnóstico de Entrada')
 
-                st.subheader('📋 Relatório Analítico de Redação')
-
-                alertas = 0
+                # Primeiro Passo: O Classificador Estatístico Local busca riscos rápidos
+                alertas_locais = 0
                 for s in sentencas:
-                    # 1. Normalizar o input antes de passar para o predict do Vectorizer do pipeline
                     sentenca_limpa = normalizar_texto_local(s)
                     probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
                     score_sensibilidade = probabilidades[1]
 
-                    if score_sensibilidade >= 0.40:
-                        alertas += 1
-                        risco = "🚨 RISCO CRÍTICO" if score_sensibilidade >= 0.65 else "⚠️ RISCO MODERADO"
-                        cor = "red" if score_sensibilidade >= 0.65 else "orange"
+                    if score_sensibilidade >= 0.50:
+                        alertas_locais += 1
+                        st.warning(f'⚠️ **Possível Viés/Sensibilidade Localizada:** "{s}"')
 
-                        st.markdown(f'<p style="color:{cor}; font-size:18px; font-weight:bold;">{risco} ({score_sensibilidade:.1%}): "{s}"</p>', unsafe_allow_html=True)
+                if alertas_locais > 0:
+                    st.info('💡 *Nosso classificador estatístico local detectou frases sensíveis. Vamos acionar a inteligência analítica profunda do Gemini para detalhar cada caso.*')
+                
+                # Segundo Passo: Se houver Chave de API, acionamos a revisão avançada gerada pelo Gemini
+                if api_key_input:
+                    with st.spinner('Acionando o editor sênior do Gemini para construir feedbacks ricos de linguagem...'):
+                        try:
+                            client = genai.Client(api_key=api_key_input)
+                            
+                            input_gemini = f"Tema da Matéria: {tema_escolhido}\nTexto para Auditoria: {texto_materia}"
+                            
+                            response = client.models.generate_content(
+                                model='gemini-2.5-flash-lite',
+                                contents=input_gemini,
+                                config=types.GenerateContentConfig(
+                                    system_instruction=prompt_sistema_editorial,
+                                    temperature=0.3
+                                )
+                            )
+                            
+                            st.markdown('---')
+                            st.markdown('### 🧠 Feedback e Análise Crítica do Gemini')
+                            st.markdown(response.text)
+                            
+                        except Exception as e:
+                            st.error(f'Erro na integração com a API do Gemini: {e}')
+                else:
+                    st.info('👉 **Para obter explicações detalhadas estilo Gemini (O que está errado + Dicas de Manuais + Redação Sugerida), insira sua GOOGLE_API_KEY na barra lateral!**')
 
-                        # Busca exata ou aproximada por sugestões no database
-                        sugestao = None
-                        if db_sugestoes is not None:
-                            fragmento = s[:15]
-                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
-                            if not match.empty:
-                                sugestao = match.iloc[0]['sugestao']
-
-                        # Retorno estruturado imitando o Gemini (Problema + Correção)
-                        st.markdown("**❌ O que está errado:**")
-                        if tema_escolhido == 'Violência contra a Mulher':
-                            st.write("O trecho pode ferir as diretrizes do Manual Universa ao utilizar justificativas sentimentais para crimes (como ciúmes), usar termos desatualizados como 'crime passional' ou faltar a indicação do Ligue 180.")
-                        elif tema_escolhido == 'Tecnologia':
-                            st.write("O texto apresenta risco ao dar a entender que a tecnologia ou algoritmos de IA decidem sentenças de forma isolada, ignorando o papel constitucional exclusivo e a revisão dos magistrados do TJGO.")
-                        else:
-                            st.write("O trecho apresenta acusações subjetivas, parcialidade evidente ou falta com o rigor jornalístico de ouvir todas as partes.")
-
-                        if sugestao:
-                            st.markdown(f"**✨ Sugestão de Reescrita Correta:** `{sugestao}`")
-                        else:
-                            st.markdown("**✨ Recomendação Geral:** Readequar a linguagem para termos técnicos-jurídicos neutros, removendo adjetivos pessoais ou termos coloquiais.")
-                        st.write('---')
-
-                if alertas == 0:
-                    st.success('✅ **Excelente!** O rascunho analisado atende perfeitamente ao tom neutro, isento e com a terminologia recomendada de acordo com as regras de redação da editoria e do TJGO.')
+    with aba_ajuda:
+        st.header('Portais e Fontes Oficiais do Judiciário')
+        for k, v in referencias_goias.items():
+            st.markdown(f'* **{k}**: {v}')
