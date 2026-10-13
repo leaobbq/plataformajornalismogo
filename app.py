@@ -61,11 +61,16 @@ def carregar_recursos():
         modelo_path = 'modelo_jornalismo.pkl'
         database_path = 'database_sugestoes.pkl'
 
+        # Fallback de segurança para o Colab se o usuário rodar localmente
+        if not os.path.exists(modelo_path):
+            modelo_path = '/content/modelo_jornalismo.pkl'
+        if not os.path.exists(database_path):
+            database_path = '/content/database_sugestoes.pkl'
+
         modelo = joblib.load(modelo_path)
         database = joblib.load(database_path)
         return modelo, database
     except Exception as e:
-        st.sidebar.error(f"Erro ao carregar arquivos na nuvem: {e}")
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
@@ -79,8 +84,38 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
+# Banco de sugestões pré-definidas de modelos de textos profissionais/éticos
+modelos_textos_base = {
+    'Precatórios': (
+        "O Tribunal de Justiça do Estado de Goiás (TJGO) divulgou nesta semana a atualização do cronograma de pagamento de precatórios para o exercício vigente. "
+        "Segundo a Diretoria de Precatórios do órgão, os repasses aos credores prioritários (como idosos e pessoas com deficiência) seguem de forma regular, "
+        "respeitando rigorosamente a ordem cronológica e os aportes financeiros estabelecidos pelo ente devedor estatal."
+    ),
+    'Alterações no Projudi': (
+        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrou períodos de oscilação técnica. "
+        "Para mitigar eventuais prejuízos aos prazos processuais da advocacia, o Tribunal emitiu certidão de indisponibilidade oficial e decretou de forma automática a prorrogação dos prazos."
+    ),
+    'Precedentes Judiciais': (
+        "Em decisão recente proferida pela Seção Cível do Tribunal de Justiça de Goiás (TJGO), fixou-se tese em sede de Incidente de Resolução de Demandas Repetitivas (IRDR). "
+        "O entendimento uniformiza as decisões de primeira instância no estado de Goiás e servirá como precedente obrigatório para casos análogos."
+    ),
+    'Saúde Técnica': (
+        "O Poder Judiciário goiano acolheu, em caráter liminar, o pedido para fornecimento de tratamento de saúde especializado na comarca de Goiânia. "
+        "Na decisão, o magistrado fundamentou a necessidade do fornecimento com base no parecer técnico favorável emitido pelo Núcleo de Apoio Técnico do Judiciário (NATJUS), garantindo segurança baseada em evidência científica."
+    ),
+    'Tecnologia': (
+        "O Centro de Inteligência do TJGO iniciou o piloto de uma nova ferramenta de automação por Inteligência Artificial voltada à triagem prévia de processos em massa. "
+        "A tecnologia funciona de forma estritamente auxiliar ao fluxo de trabalho, mantendo todas as etapas de julgamento sob supervisão, revisão direta e assinatura do magistrado competente."
+    ),
+    'Violência contra a Mulher': (
+        "O Ministério Público de Goiás, em atuação conjunta com a Coordenadoria Estadual da Mulher do TJGO, formalizou a denúncia contra o suspeito de agressão na comarca de [Cidade]. "
+        "O juízo deferiu de imediato medidas protetivas de urgência previstas na Lei Maria da Penha para afastar o agressor e garantir a integridade da vítima. "
+        "---\n📞 Se você ou alguém próximo vivencia situações de violência doméstica, denuncie: ligue de forma gratuita e anônima para o Ligue 180 ou acione a Polícia Militar pelo 190."
+    )
+}
+
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl. Certifique-se de enviá-los para a raiz do seu repositório no GitHub!')
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl de forma relativa. Verifique se eles estão na raiz do seu repositório no GitHub!')
 else:
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
@@ -95,7 +130,7 @@ else:
         if st.button('Revisar com o Copiloto'):
             if not texto_materia.strip():
                 st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
-            else:
+            else: 
                 sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
 
                 alertas_detectados = []
@@ -117,26 +152,34 @@ else:
                 st.markdown('### 🧠 Retorno do Editor Sênior')
 
                 if len(alertas_detectados) == 0:
-                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnica ou éticas. Parabéns pelo cuidado com a escrita!"
+                    feedback_texto = f"""Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.
+
+O tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.
+
+Sua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnica ou éticas. Parabéns pelo cuidado com a escrita!"""
                 else:
-                    introducao = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\n\nA ideia central da sua matéria é ótima, mas reparei em alguns pontos pontuais que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.\n\n"
+                    introducao = f"""Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.
+
+A ideia central da sua matéria é ótima, mas reparei em alguns pontos pontuais que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.
+
+"""
                     diretrizes = ""
                     if tema_escolhido == 'Violência contra a Mulher':
-                        diretrizes = f"* **Sobre a abordagem ética de gênero:** Notei que há trechos que podem soar como justificativa sentimental para as ações do agressor ou que de alguma forma transferem peso sobre o comportamento da vítima (por exemplo, ao mencionar rotinas, locais ou trajes). O *Manual Universa* orienta que reportagens de feminicídio ou agressão evitem termos passionais e foquem na conduta ilícita sob um tom técnico-jurídico neutro, amparando a narrativa com canais de acolhimento (como o Ligue 180).
+                        diretrizes = """* **Sobre a abordagem ética de gênero:** Notei que há trechos que podem soar como justificativa sentimental para as ações do agressor ou que de alguma forma transferem peso sobre o comportamento da vítima (por exemplo, ao mencionar rotinas, locais ou trajes). O *Manual Universa* orienta que reportagens de feminicídio ou agressão evitem termos passionais e foquem na conduta ilícita sob um tom técnico-jurídico neutro, amparando a narrativa com canais de acolhimento (como o Ligue 180).
 
-"
+"""
                     elif tema_escolhido == 'Tecnologia':
-                        diretrizes = f"* **Sobre a precisão e inovação no Judiciário:** No campo da tecnologia, é muito comum darmos a entender de forma entusiasmada (ou alarmista) que os algoritmos de Inteligência Artificial estão 'julgando sozinhos' ou substituindo o crivo humano. Segundo as diretrizes da Resolução 332 do CNJ, as ferramentas operam estritamente como copilotos de organização de arquivos. Deixar claro que o magistrado é quem revisa e assina a decisão é essencial para não confundir o leitor.
+                        diretrizes = """* **Sobre a precisão e inovação no Judiciário:** No campo da tecnologia, é muito comum darmos a entender de forma entusiasmada (ou alarmista) que os algoritmos de Inteligência Artificial estão 'julgando sozinhos' ou substituindo o crivo humano. Segundo as diretrizes da Resolução 332 do CNJ, as ferramentas operam estritamente como copilotos de organização de arquivos. Deixar claro que o magistrado é quem revisa e assina a decisão é essencial para não confundir o leitor.
 
-"
+"""
                     elif tema_escolhido == 'Língua Portuguesa':
-                        diretrizes = f"* **Sobre a estrutura e concordância:** Observei detalhes no fluxo das orações que fogem um pouco do padrão culto da Língua Portuguesa (como concordâncias verbais ou nominais frágeis). Para mantermos o prestígio editorial, vale a pena priorizar a ordem direta na construção das frases (sujeito + verbo + predicado), simplificando a jornada do leitor e evitando termos de duplo sentido.
+                        diretrizes = """* **Sobre a estrutura e concordância:** Observei detalhes no fluxo das orações que fogem um pouco do padrão culto da Língua Portuguesa (como concordâncias verbais ou nominais frágeis). Para mantermos o prestígio editorial, vale a pena priorizar a ordem direta na construção das frases (sujeito + verbo + predicado), simplificando a jornada do leitor e evitando termos de duplo sentido.
 
-"
+"""
                     else:
-                        diretrizes = f"* **Sobre o tom institucional e neutralidade:** Em matérias jurídicas ou gerais, o uso de expressões com forte carga opinativa ou especulações sem o respaldo de documentos formais ou laudos técnicos do tribunal abre margem para contestações. O ideal é darmos espaço às decisões documentadas de forma impessoal.
+                        diretrizes = """* **Sobre o tom institucional e neutralidade:** Em matérias jurídicas ou gerais, o uso de expressões com forte carga opinativa ou especulações sem o respaldo de documentos formais ou laudos técnicos do tribunal abre margem para contestações. O ideal é darmos espaço às decisões documentadas de forma impessoal.
 
-"
+"""
 
                     detalhe_trechos = "Veja, por exemplo, o impacto que esses pontos causam na fluidez destas partes que destaquei:
 "
