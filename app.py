@@ -11,7 +11,7 @@ st.set_page_config(
     layout='centered'
 )
 
-# Estilização CSS limpa e moderna integrada de forma segura
+# Estilização CSS segura em bloco único
 st.markdown("""<style>
 .reportview-container {
     background: #fafafa;
@@ -43,7 +43,7 @@ div.stButton > button:first-child {
 
 st.title('⚖️ Revisor Editorial Conversacional')
 st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
-st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, didático e amigável de forma 100% online.')
+st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, didático e amigável.')
 
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
@@ -63,9 +63,7 @@ def carregar_recursos():
             modelo_path = '/content/modelo_jornalismo.pkl'
         if not os.path.exists(database_path):
             database_path = '/content/database_sugestoes.pkl'
-        modelo = joblib.load(modelo_path)
-        database = joblib.load(database_path)
-        return modelo, database
+        return joblib.load(modelo_path), joblib.load(database_path)
     except Exception as e:
         return None, None
 
@@ -105,13 +103,12 @@ modelos_textos_base = {
     'Violência contra a Mulher': (
         "O Ministério Público de Goiás, em atuação conjunta com a Coordenadoria Estadual da Mulher do TJGO, formalizou a denúncia contra o suspeito de agressão na comarca de [Cidade]. "
         "O juízo deferiu de imediato medidas protetivas de urgência previstas na Lei Maria da Penha para afastar o agressor e garantir a integridade da vítima. "
-        "
-📞 Se você ou alguém próximo vivencia situações de violência doméstica, denuncie: ligue de forma gratuita e anônima para o Ligue 180 ou acione a Polícia Militar pelo 190."
+        "Canais de denúncia e apoio: ligue gratuitamente para o Ligue 180 ou acione a Polícia Militar pelo 190."
     )
 }
 
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl. Verifique se eles estão na raiz do seu repositório no GitHub!')
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl de forma relativa.')
 else:
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
@@ -131,7 +128,6 @@ else:
 
                 alertas_detectados = []
                 sugestoes_banco = []
-                detalhes_erros = []
 
                 for s in sentencas:
                     sentenca_limpa = normalizar_texto_local(s)
@@ -140,65 +136,44 @@ else:
 
                     if score_sensibilidade >= 0.45:
                         alertas_detectados.append(s)
-                        
-                        justificativa_mapeada = None
-                        sugestao_mapeada = None
-                        
                         if db_sugestoes is not None:
                             fragmento = s[:15]
                             match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
-                            if not match.empty:
-                                sugestao_mapeada = match.iloc[0]['sugestao']
-                                if 'erro_identificado' in match.columns:
-                                    justificativa_mapeada = match.iloc[0]['erro_identificado']
-                                elif 'justificativa' in match.columns:
-                                    justificativa_mapeada = match.iloc[0]['justificativa']
-                        
-                        if not justificativa_mapeada:
-                            if tema_escolhido == 'Violência contra a Mulher':
-                                justificativa_mapeada = "Uso de terminologia que culpabiliza indiretamente a vítima ou justifica o crime baseado no comportamento ou ciúmes do agressor. Contraria o Manual Universa."
-                            elif tema_escolhido == 'Tecnologia':
-                                justificativa_mapeada = "Premissa incorreta de que a IA profere sentenças de forma autônoma. No TJGO a tecnologia opera como auxiliar administrativa sob revisão e assinatura obrigatória do magistrado humano."
-                            else:
-                                justificativa_mapeada = "O trecho apresenta tom opinativo, subjetivo ou com termos tecnicamente desajustados para a cobertura profissional de pautas do TJGO."
-                                
-                        detalhes_erros.append({
-                            'trecho': s,
-                            'erro': justificativa_mapeada,
-                            'sugestao': sugestao_mapeada
-                        })
+                            if not match.empty and match.iloc[0]['sugestao'] is not None:
+                                sugestoes_banco.append(match.iloc[0]['sugestao'])
 
                 st.markdown('### 🧠 Retorno do Editor Sênior')
 
                 if len(alertas_detectados) == 0:
-                    feedback_texto = f"""Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.
-
-O tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.
-
-Sua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnicas ou éticas. Parabéns pelo cuidado com a escrita!"""
-                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
+                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnica ou éticas. Parabéns pelo cuidado com a escrita!"
                 else:
-                    st.markdown(f"""<div class="feedback-box">
-                    Olá! Analisei com cuidado o seu rascunho sobre <b>{tema_escolhido}</b>.<br><br>
-                    A ideia central da sua matéria é ótima, mas reparei em alguns desvios factuais ou de tom que merecem atenção para garantir a blindagem jurídica e a máxima clareza técnica.<br><br>
-                    Abaixo separei cada frase crítica para analisarmos de forma transparente:
-                    </div>""", unsafe_allow_html=True)
-                    
-                    for idx, item in enumerate(detalhes_erros):
-                        st.markdown(f"### 📌 Ponto {idx+1}: Análise de Sentença")
-                        st.warning(f""{item['trecho']}"")
-                        
-                        st.markdown("**❌ Onde está o erro:**")
-                        st.error(item['erro'])
-                        
-                        st.markdown("**✨ Minha sugestão de redação:**")
-                        if item['sugestao']:
-                            st.success(item['sugestao'])
-                        else:
-                            st.success("Recomenda-se reescrever este período utilizando termos institucionais neutros, focando unicamente em fatos consumados de forma impessoal e removendo adjetivos coloquiais.")
-                        st.write('---')
+                    introducao = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\n\nA ideia central da sua matéria é ótima, mas reparei em alguns pontos pontuais que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.\n\n"
+                    diretrizes = ""
+                    if tema_escolhido == 'Violência contra a Mulher':
+                        diretrizes = f"* **Sobre a abordagem ética de gênero:** Notei que há trechos que podem soar como justificativa sentimental para as ações do agressor ou que de alguma forma transferem peso sobre o comportamento da vítima (por exemplo, ao mencionar rotinas, locais ou trajes). O *Manual Universa* orienta que reportagens de feminicídio ou agressão evitem termos passionais e foquem na conduta ilícita sob um tom técnico-jurídico neutro, amparando a narrativa com canais de acolhimento (como o Ligue 180).\n\n"
+                    elif tema_escolhido == 'Tecnologia':
+                        diretrizes = f"* **Sobre a precisão e inovação no Judiciário:** No campo da tecnologia, é muito comum darmos a entender de forma entusiasmada (ou alarmista) que os algoritmos de Inteligência Artificial estão 'julgando sozinhos' ou substituindo o crivo humano. Segundo as diretrizes da Resolução 332 do CNJ, as ferramentas operam estritamente como copilotos de organização de arquivos. Deixar claro que o magistrado é quem revisa e assina a decisão é essencial para não confundir o leitor.\n\n"
+                    elif tema_escolhido == 'Língua Portuguesa':
+                        diretrizes = f"* **Sobre a estrutura e concordância:** Observei detalhes no fluxo das orações que fogem um pouco do padrão culto da Língua Portuguesa (como concordâncias verbais ou nominais frágeis). Para mantermos o prestígio editorial, vale a pena priorizar a ordem direta na construção das frases (sujeito + verbo + predicado), simplificando a jornada do leitor e evitando termos de duplo sentido.\n\n"
+                    else:
+                        diretrizes = f"* **Sobre o tom institucional e neutralidade:** Em matérias jurídicas ou gerais, o uso de expressões com forte carga opinativa ou especulações sem o respaldo de documentos formais ou laudos técnicos do tribunal abre margem para contestações. O ideal é darmos espaço às decisões documentadas de forma impessoal.\n\n"
+
+                    detalhe_trechos = "Veja, por exemplo, o impacto que esses pontos causam na fluidez destas partes que destaquei:\n"
+                    for trecho_alerta in alertas_detectados:
+                        detalhe_trechos += f"* *\"{trecho_alerta}\"*\n"
+
+                    reescrita_sugerida = "\n### ✨ Minha proposta de reescrita:\nPara deixar o texto impecável e transparente, sugiro ajustarmos para uma redação mais direta. Veja se esta opção abaixo mantém a alma da sua apuração de forma segura:\n\n"
+                    if sugestoes_banco:
+                        reescrita_sugerida += f"\"{' '.join(sugestoes_banco)}\"\n\n"
+                    else:
+                        reescrita_sugerida += "*\"[Foque na ordem direta, cite as decisões institucionais de forma impessoal e remova termos que denotem sentimentos ou prejulgamentos de valor]\"*\n\n"
+
+                    reescrita_sugerida += "O que acha de adotar esse formato? O jornalista ganha em blindagem jurídica e o leitor em clareza factual. Conte comigo se quiser ajustar outros detalhes!"
+                    feedback_texto = introducao + diretrizes + detalhe_trechos + reescrita_sugerida
+
+                st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
 
     with aba_ajuda:
-        st.markdown("""#### 📚 Portais de Apoio Consultivo""")
+        st.markdown('#### 📚 Portais de Apoio Consultivo')
         for k, v in referencias_goias.items():
             st.markdown(f'* **{k}**: {v}')
