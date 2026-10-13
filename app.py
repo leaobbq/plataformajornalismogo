@@ -54,7 +54,7 @@ div.stButton > button:first-child {
     font-weight: bold;
     border: none;
 }
-</style>""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True) 
 
 st.title('⚖️ Revisor Editorial Conversacional')
 st.markdown('### Auditoria Crítica de Textos de Alta Especificidade')
@@ -71,7 +71,7 @@ def normalizar_texto_local(texto):
 
 @st.cache_resource
 def carregar_recursos():
-    try: 
+    try:
         modelo_path = 'modelo_jornalismo.pkl'
         database_path = 'database_sugestoes.pkl'
 
@@ -98,8 +98,8 @@ referencias_goias = {
 }
 
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl de forma relativa. Verifique se eles estão na raiz do seu repositório no GitHub!')
-else: 
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl. Verifique se eles estão na raiz!')
+else:
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
     with aba_auditoria:
@@ -127,7 +127,6 @@ else:
                     if score_sensibilidade >= 0.40:
                         alertas_detectados.append(s)
 
-                        # Busca profunda por justificativas personalizadas de erro no database consolidado
                         justificativa_mapeada = None
                         sugestao_mapeada = None
 
@@ -139,22 +138,21 @@ else:
                                 if 'justificativa' in match.columns:
                                     justificativa_mapeada = match.iloc[0]['justificativa']
 
-                        # Fallback inteligente se o erro não estiver mapeado de forma exata no banco de dados
                         if not justificativa_mapeada:
                             if tema_escolhido == 'Precatórios':
-                                justificativa_mapeada = "Acusação informal ou prejulgamento sobre pagamentos. Precatórios constitucionais obedecem a cronogramas de repasses orçamentários sob regulação rígida do CNJ, e não a atos discricionários do TJGO."
+                                justificativa_mapeada = "Acusação informal ou prejulgamento sobre pagamentos. Precatórios constitucionais obedecem a cronogramas de repasses orçamentários sob regulação do CNJ, e não a atos discricionários."
                             elif tema_escolhido == 'Alterações no Projudi':
-                                justificativa_mapeada = "Tom ofensivo ou informal para retratar instabilidades técnicas do sistema processual do Projudi. Falhas técnicas geram prorrogações legais devidamente certificadas por portaria."
+                                justificativa_mapeada = "Tom inadequado para retratar instabilidades técnicas temporárias do sistema processual do Projudi."
                             elif tema_escolhido == 'Precedentes Judiciais':
-                                justificativa_mapeada = "Equívoco de técnica jurídica. Decisões singulares de primeira instância não criam efeito vinculante generalizado imediato para outros processos antes da consolidação por colegiado."
+                                justificativa_mapeada = "Equívoco de técnica jurídica. Decisões singulares de primeira instância não criam efeito vinculante generalizado imediato."
                             elif tema_escolhido == 'Saúde Técnica':
-                                justificativa_mapeada = "Alegação infundada sobre a motivação da concessão do medicamento. Demandas de saúde no tribunal passam pelo crivo de notas técnicas do NATJUS de caráter estritamente científico."
+                                justificativa_mapeada = "Alegação infundada sobre a motivação da decisão judicial. O fornecimento de medicamentos passa pelo crivo científico do NATJUS."
                             elif tema_escolhido == 'Tecnologia':
-                                justificativa_mapeada = "Exagero tecnológico (desinformação). A Inteligência Artificial em tribunais atua como copiloto de automação e triagem, sendo a atividade de julgar exclusiva de magistrados humanos (Resolução 332/CNJ)."
+                                justificativa_mapeada = "Desinformação sobre inteligência artificial. Os algoritmos atuam como auxiliares, sendo a atividade jurisdicional exclusiva de magistrados humanos."
                             elif tema_escolhido == 'Violência contra a Mulher':
-                                justificativa_mapeada = "Violação grave das diretrizes éticas do Manual Universa. Culpabilizar a vítima por seus trajes, horários ou comportamentos ou justificar o agressor por ciúmes/descontrole é inaceitável."
+                                justificativa_mapeada = "Violação das regras éticas de gênero (Manual Universa). Culpabilizar a vítima ou atenuar o crime justificando a conduta do agressor é inaceitável."
                             else:
-                                justificativa_mapeada = "Linguagem subjetiva, opinativa ou adjetivação desnecessária que prejudica a isenção editorial técnica esperada para a pauta judiciária."
+                                justificativa_mapeada = "Linguagem subjetiva, opinativa ou adjetivação excessiva que prejudica o tom de neutralidade do veículo."
 
                         relatorio_detalhado.append({
                             'frase_original': s,
@@ -168,30 +166,29 @@ else:
                     st.markdown(f"""<div class="feedback-box">
                         <span class="success-badge">✅ TEXTO SEGURO E NEUTRO</span><br>
                         Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.<br><br>
-                        O tom adotado para tratar sobre <b>{tema_escolhido}</b> está perfeitamente neutro, técnico e isento. 
-                        Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.<br><br>
-                        Sua matéria está pronta e segura para publicação! Parabéns pelo rigor ético e precisão técnica.
+                        O tom adotado para tratar sobre <b>{tema_escolhido}</b> está perfeitamente neutro, técnico e isento.<br><br>
+                        Sua matéria está pronta e segura para publicação!
                     </div>""", unsafe_allow_html=True)
                 else:
                     st.markdown(f"""<div class="feedback-box">
                         <span class="error-badge">⚠️ ALERTAS ENCONTRADOS</span><br>
                         Olá! Analisei com cuidado o seu rascunho de texto sobre <b>{tema_escolhido}</b>.<br><br>
-                        A ideia central da sua matéria é importante, contudo identificamos trechos com problemas técnicos de precisão, linguagem informal ou desvios éticos em relação aos manuais recomendados. Veja abaixo o diagnóstico detalhado para cada trecho:
+                        Identificamos trechos com problemas de precisão técnica ou desvios éticos. Veja o diagnóstico abaixo:
                     </div>""", unsafe_allow_html=True)
 
                     for item in relatorio_detalhado:
-                        st.markdown(f"**Frase Analisada:**")
-                        st.warning(f""{item['frase_original']}"")
-                        
-                        st.markdown(f"**❌ O que está errado (Justificativa Técnica):**")
+                        st.markdown("**Frase Analisada:**")
+                        st.warning(f"'{item['frase_original']}'")
+
+                        st.markdown("**❌ O que está errado (Justificativa Técnica):**")
                         st.info(item['justificativa'])
 
-                        st.markdown(f"**✨ Como corrigir (Sugestão de Redação):**")
+                        st.markdown("**✨ Como corrigir (Sugestão de Redação):**")
                         if item['reescrita']:
                             st.success(item['reescrita'])
                         else:
-                            st.success("Sugestão Geral: Reescreva o trecho na ordem direta da língua portuguesa, utilizando vocabulário técnico impessoal, baseando-se estritamente em fatos documentados e citando canais oficiais (como Ligue 180 para violência doméstica).")
-                        
+                            st.success("Sugestão Geral: Reescreva o trecho na ordem direta da língua portuguesa, utilizando vocabulário técnico impessoal, baseando-se estritamente em fatos e citando fontes oficiais.")
+
                         st.markdown("--- ")
 
     with aba_ajuda:
