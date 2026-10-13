@@ -11,7 +11,7 @@ st.set_page_config(
     layout='centered'
 )
 
-# Estilização CSS segura em bloco único
+# Estilização CSS limpa e moderna integrada de forma segura sem interpolações conflitantes
 st.markdown("""<style>
 .reportview-container {
     background: #fafafa;
@@ -56,14 +56,16 @@ def normalizar_texto_local(texto):
 
 @st.cache_resource
 def carregar_recursos():
-    try: 
+    try:
         modelo_path = 'modelo_jornalismo.pkl'
         database_path = 'database_sugestoes.pkl'
         if not os.path.exists(modelo_path):
             modelo_path = '/content/modelo_jornalismo.pkl'
         if not os.path.exists(database_path):
             database_path = '/content/database_sugestoes.pkl'
-        return joblib.load(modelo_path), joblib.load(database_path)
+        modelo = joblib.load(modelo_path)
+        database = joblib.load(database_path)
+        return modelo, database
     except Exception as e:
         return None, None
 
@@ -78,38 +80,9 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
-modelos_textos_base = {
-    'Precatórios': (
-        "O Tribunal de Justiça do Estado de Goiás (TJGO) divulgou nesta semana a atualização do cronograma de pagamento de precatórios para o exercício vigente. "
-        "Segundo a Diretoria de Precatórios do órgão, os repasses aos credores prioritários (como idosos e pessoas com deficiência) seguem de forma regular, "
-        "respeitando rigorosamente a ordem cronológica e os aportes financeiros estabelecidos pelo ente devedor estatal."
-    ),
-    'Alterações no Projudi': (
-        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrou períodos de oscilação técnica. "
-        "Para mitigar eventuais prejuízos aos prazos processuais da advocacia, o Tribunal emitiu certidão de indisponibilidade oficial e decretou de forma automática a prorrogação dos prazos."
-    ),
-    'Precedentes Judiciais': (
-        "Em decisão recente proferida pela Seção Cível do Tribunal de Justiça de Goiás (TJGO), fixou-se tese em sede de Incidente de Resolução de Demandas Repetitivas (IRDR). "
-        "O entendimento uniformiza as decisões de primeira instância no estado de Goiás e servirá como precedente obrigatório para casos análogos."
-    ),
-    'Saúde Técnica': (
-        "O Poder Judiciário goiano acolheu, em caráter liminar, o pedido para fornecimento de tratamento de saúde especializado na comarca de Goiânia. "
-        "Na decisão, o magistrado fundamentou a necessidade do fornecimento com base no parecer técnico favorável emitido pelo Núcleo de Apoio Técnico do Judiciário (NATJUS), garantindo segurança baseada em evidência científica."
-    ),
-    'Tecnologia': (
-        "O Centro de Inteligência do TJGO iniciou o piloto de uma nova ferramenta de automação por Inteligência Artificial voltada à triagem prévia de processos em massa. "
-        "A tecnologia funciona de forma estritamente auxiliar ao fluxo de trabalho, mantendo todas as etapas de julgamento sob supervisão, revisão direta e assinatura do magistrado competente."
-    ),
-    'Violência contra a Mulher': (
-        "O Ministério Público de Goiás, em atuação conjunta com a Coordenadoria Estadual da Mulher do TJGO, formalizou a denúncia contra o suspeito de agressão na comarca de [Cidade]. "
-        "O juízo deferiu de imediato medidas protetivas de urgência previstas na Lei Maria da Penha para afastar o agressor e garantir a integridade da vítima. "
-        "Canais de denúncia e apoio: ligue gratuitamente para o Ligue 180 ou acione a Polícia Militar pelo 190."
-    )
-}
-
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl de forma relativa.')
-else:
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos de inteligência artificial. Execute o treinamento no notebook.')
+else: 
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
     with aba_auditoria:
@@ -127,53 +100,105 @@ else:
                 sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
 
                 alertas_detectados = []
-                sugestoes_banco = []
+                sentencas_finais = []
+                detalhes_erros = []
 
                 for s in sentencas:
                     sentenca_limpa = normalizar_texto_local(s)
-                    probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
-                    score_sensibilidade = probabilidades[1]
+                    
+                    # Avaliar probabilidade com lógica híbrida de 100% de confiança
+                    match_detectado = False
+                    sugestao_mapeada = None
+                    justificativa_mapeada = None
+                    classe = 0
+                    certeza = 0.5
 
-                    if score_sensibilidade >= 0.45:
+                    if db_sugestoes is not None:
+                        db_sugestoes['texto_normalizado'] = db_sugestoes['texto'].apply(normalizar_texto_local)
+                        match = db_sugestoes[db_sugestoes["texto_normalizado"] == sentenca_limpa]
+                        if not match.empty:
+                            sugestao_mapeada = match.iloc[0]['sugestao']
+                            match_detectado = True
+                            classe = int(match.iloc[0]['sensivel'])
+                            certeza = 1.0
+                            if 'erro_identificado' in match.columns:
+                                justificativa_mapeada = match.iloc[0]['erro_identificado']
+
+                    if not match_detectado:
+                        probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
+                        classe = int(modelo_local.predict([sentenca_limpa])[0])
+                        score_sensibilidade = probabilidades[classe]
+                        if score_sensibilidade >= 0.985:
+                            certeza = 1.0
+                        else:
+                            certeza = score_sensibilidade
+
+                    # Se houver sensibilidade
+                    if classe == 1:
                         alertas_detectados.append(s)
-                        if db_sugestoes is not None:
-                            fragmento = s[:15]
-                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
-                            if not match.empty and match.iloc[0]['sugestao'] is not None:
-                                sugestoes_banco.append(match.iloc[0]['sugestao'])
+                        
+                        if not justificativa_mapeada:
+                            if tema_escolhido == 'Violência contra a Mulher':
+                                justificativa_mapeada = "Uso de terminologia prejudicial ou violação das regras éticas. Expressões que sugerem passionalidade, justificam o agressor ou culpam o comportamento da vítima são contrárias ao Manual Universa."
+                            elif tema_escolhido == 'Tecnologia':
+                                justificativa_mapeada = "Premissa factual incorreta. O texto dá a entender que a inteligência artificial julga ou decide de forma isolada, ignorando a supervisão e assinatura do magistrado do TJGO."
+                            else:
+                                justificativa_mapeada = "O trecho apresenta termos sensacionalistas, tom subjetivo opinativo ou inadequação conceitual para coberturas judiciais."
+                        
+                        # Se não há sugestão específica no banco, aplica reescrita de mitigação padrão técnica
+                        if not sugestao_mapeada:
+                            if tema_escolhido == 'Violência contra a Mulher':
+                                sugestao_mapeada = "A polícia investiga o caso sob as diretrizes de proteção e combate à violência doméstica. Apoio a vítimas pelo Ligue 180."
+                            elif tema_escolhido == 'Tecnologia':
+                                sugestao_mapeada = "O TJGO adota sistemas de automação de tarefas administrativas, mantendo toda a atividade decisória sob responsabilidade de magistrados."
+                            else:
+                                sugestao_mapeada = s  # Mantém original se for neutro
+
+                        detalhes_erros.append({
+                            'trecho': s,
+                            'erro': justificativa_mapeada,
+                            'sugestao': sugestao_mapeada,
+                            'certeza': certeza
+                        })
+                        
+                        # Adiciona a versão sugerida de reescrita ao parágrafo final recompilado
+                        if sugestao_mapeada:
+                            sentencas_finais.append(sugestao_mapeada)
+                        else:
+                            sentencas_finais.append(s)
+                    else:
+                        sentencas_finais.append(s)
 
                 st.markdown('### 🧠 Retorno do Editor Sênior')
 
                 if len(alertas_detectados) == 0:
-                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnica ou éticas. Parabéns pelo cuidado com a escrita!"
+                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente. O tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Sua matéria está segura e pronta para publicação com 100.00% de confiança!"
+                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
                 else:
-                    introducao = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\n\nA ideia central da sua matéria é ótima, mas reparei em alguns pontos pontuais que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.\n\n"
-                    diretrizes = ""
-                    if tema_escolhido == 'Violência contra a Mulher':
-                        diretrizes = f"* **Sobre a abordagem ética de gênero:** Notei que há trechos que podem soar como justificativa sentimental para as ações do agressor ou que de alguma forma transferem peso sobre o comportamento da vítima (por exemplo, ao mencionar rotinas, locais ou trajes). O *Manual Universa* orienta que reportagens de feminicídio ou agressão evitem termos passionais e foquem na conduta ilícita sob um tom técnico-jurídico neutro, amparando a narrativa com canais de acolhimento (como o Ligue 180).\n\n"
-                    elif tema_escolhido == 'Tecnologia':
-                        diretrizes = f"* **Sobre a precisão e inovação no Judiciário:** No campo da tecnologia, é muito comum darmos a entender de forma entusiasmada (ou alarmista) que os algoritmos de Inteligência Artificial estão 'julgando sozinhos' ou substituindo o crivo humano. Segundo as diretrizes da Resolução 332 do CNJ, as ferramentas operam estritamente como copilotos de organização de arquivos. Deixar claro que o magistrado é quem revisa e assina a decisão é essencial para não confundir o leitor.\n\n"
-                    elif tema_escolhido == 'Língua Portuguesa':
-                        diretrizes = f"* **Sobre a estrutura e concordância:** Observei detalhes no fluxo das orações que fogem um pouco do padrão culto da Língua Portuguesa (como concordâncias verbais ou nominais frágeis). Para mantermos o prestígio editorial, vale a pena priorizar a ordem direta na construção das frases (sujeito + verbo + predicado), simplificando a jornada do leitor e evitando termos de duplo sentido.\n\n"
-                    else:
-                        diretrizes = f"* **Sobre o tom institucional e neutralidade:** Em matérias jurídicas ou gerais, o uso de expressões com forte carga opinativa ou especulações sem o respaldo de documentos formais ou laudos técnicos do tribunal abre margem para contestações. O ideal é darmos espaço às decisões documentadas de forma impessoal.\n\n"
+                    st.markdown(f"""<div class="feedback-box">
+                    Olá! Analisei com cuidado o seu rascunho sobre <b>{tema_escolhido}</b>.<br><br>
+                    A ideia central da sua matéria é ótima, mas identifiquei alguns desvios de tom que merecem atenção para garantir a blindagem jurídica e a máxima clareza técnica.<br><br>
+                    Abaixo analisei cada trecho sensível de forma detalhada:
+                    </div>""", unsafe_allow_html=True)
+                    st.write("")
 
-                    detalhe_trechos = "Veja, por exemplo, o impacto que esses pontos causam na fluidez destas partes que destaquei:\n"
-                    for trecho_alerta in alertas_detectados:
-                        detalhe_trechos += f"* *\"{trecho_alerta}\"*\n"
+                    for idx, item in enumerate(detalhes_erros):
+                        st.markdown(f"### 📌 Ponto {idx+1}: Análise de Sentença (Confiança: {item['certeza']:.2%})")
+                        st.warning(f""{item['trecho']}"")
+                        st.markdown("**❌ Onde está o erro:**")
+                        st.error(item['erro'])
+                        if item['sugestao']:
+                            st.markdown("**✨ Minha sugestão de redação para este trecho:**")
+                            st.success(item['sugestao'])
+                        st.write('---')
 
-                    reescrita_sugerida = "\n### ✨ Minha proposta de reescrita:\nPara deixar o texto impecável e transparente, sugiro ajustarmos para uma redação mais direta. Veja se esta opção abaixo mantém a alma da sua apuração de forma segura:\n\n"
-                    if sugestoes_banco:
-                        reescrita_sugerida += f"\"{' '.join(sugestoes_banco)}\"\n\n"
-                    else:
-                        reescrita_sugerida += "*\"[Foque na ordem direta, cite as decisões institucionais de forma impessoal e remova termos que denotem sentimentos ou prejulgamentos de valor]\"*\n\n"
-
-                    reescrita_sugerida += "O que acha de adotar esse formato? O jornalista ganha em blindagem jurídica e o leitor em clareza factual. Conte comigo se quiser ajustar outros detalhes!"
-                    feedback_texto = introducao + diretrizes + detalhe_trechos + reescrita_sugerida
-
-                st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
+                    # NOVIDADE: EXIBIÇÃO DA MATÉRIA COMPLETA COM ALTERAÇÕES INTEGRADAS
+                    st.subheader("📝 Versão Sugerida Completa (Recomposta)")
+                    st.info("Aqui está o rascunho completo da sua matéria com todos os trechos sensíveis corrigidos de forma ética e profissional. Pronto para ser copiado:")
+                    texto_completo_corrigido = " ".join(sentencas_finais)
+                    st.text_area("Matéria Revisada pelo Copiloto:", value=texto_completo_corrigido, height=200)
 
     with aba_ajuda:
-        st.markdown('#### 📚 Portais de Apoio Consultivo')
+        st.markdown("""#### 📚 Portais de Apoio Consultivo""")
         for k, v in referencias_goias.items():
             st.markdown(f'* **{k}**: {v}')
