@@ -26,11 +26,9 @@ def normalizar_texto_local(texto):
 @st.cache_resource
 def carregar_recursos():
     try:
-        # Prioridade absoluta para caminhos do Google Colab para evitar falhas de carregamento em segundo plano
         modelo_path = '/content/modelo_jornalismo.pkl'
         database_path = '/content/database_sugestoes.pkl'
 
-        # Fallback para caminhos relativos em ambientes externos (como GitHub/Streamlit Cloud)
         if not os.path.exists(modelo_path):
             modelo_path = 'modelo_jornalismo.pkl'
         if not os.path.exists(database_path):
@@ -111,7 +109,7 @@ else:
             if not texto_materia.strip():
                 st.warning('Por favor, digite ou cole um texto antes de analisar.')
             else:
-                sentencas = [s.strip() for s in re.split(r'(?<=[".!?])\s+', texto_materia) if len(s.strip()) > 4]
+                sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
 
                 st.subheader('📋 Relatório Analítico de Redação')
 
@@ -136,7 +134,8 @@ else:
                             match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
                             if not match.empty:
                                 sugestao = match.iloc[0]['sugestao']
-                                justificativa = match.iloc[0]['justificativa']
+                                if 'justificativa' in match.columns:
+                                    justificativa = match.iloc[0]['justificativa']
 
                         # Retorno estruturado imitando o Gemini (Problema + Correção)
                         st.markdown("**❌ O que está errado:**")
@@ -156,7 +155,7 @@ else:
                             st.markdown(f"**✨ Sugestão de Reescrita Correta:** `{sugestao}`")
                         else:
                             st.markdown("**✨ Recomendação Geral:** Readequar a linguagem para termos técnicos-jurídicos neutros de acordo com o Manual do Senado Federal, removendo adjetivos pessoais ou termos coloquiais.")
-                        st.write('---')
+                        st.write('---'")
 
                 if alertas == 0:
                     st.success('✅ **Excelente!** O rascunho analisado atende perfeitamente ao tom neutro, isento e com a terminologia recomendada de acordo com as regras de redação da editoria e do TJGO.')
