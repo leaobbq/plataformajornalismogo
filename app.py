@@ -109,7 +109,7 @@ else:
             if not texto_materia.strip():
                 st.warning('Por favor, digite ou cole um texto antes de analisar.')
             else:
-                sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
+                sentencas = [s.strip() for s in re.split(r'(?<=[".!?])\s+', texto_materia) if len(s.strip()) > 4]
 
                 st.subheader('📋 Relatório Analítico de Redação')
 
@@ -155,7 +155,7 @@ else:
                             st.markdown(f"**✨ Sugestão de Reescrita Correta:** `{sugestao}`")
                         else:
                             st.markdown("**✨ Recomendação Geral:** Readequar a linguagem para termos técnicos-jurídicos neutros de acordo com o Manual do Senado Federal, removendo adjetivos pessoais ou termos coloquiais.")
-                        st.write('---'")
+                        st.write('---')
 
                 if alertas == 0:
                     st.success('✅ **Excelente!** O rascunho analisado atende perfeitamente ao tom neutro, isento e com a terminologia recomendada de acordo com as regras de redação da editoria e do TJGO.')
