@@ -11,40 +11,25 @@ st.set_page_config(
     layout='centered'
 )
 
-# Estilização CSS inspirada na interface limpa do Gemini
+# Estilização CSS limpa e moderna integrada de forma segura
 st.markdown("""<style>
 .reportview-container {
     background: #fafafa;
 }
 .feedback-box {
     background-color: #f0f4f9;
-    padding: 24px;
+    padding: 20px;
     border-radius: 16px;
     border: 1px solid #d3e3fd;
     color: #1f1f1f;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
-    margin-bottom: 20px;
 }
-.error-badge {
-    background-color: #fce8e6;
-    color: #c5221f;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    display: inline-block;
-    margin-bottom: 8px;
-}
-.success-badge {
-    background-color: #e6f4ea;
-    color: #137333;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    font-size: 14px;
-    display: inline-block;
-    margin-bottom: 8px;
+.texto-destaque {
+    background-color: #e9eef6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
 }
 div.stButton > button:first-child {
     background-color: #0b57d0;
@@ -54,11 +39,11 @@ div.stButton > button:first-child {
     font-weight: bold;
     border: none;
 }
-</style>""", unsafe_allow_html=True) 
+</style>""", unsafe_allow_html=True)
 
 st.title('⚖️ Revisor Editorial Conversacional')
-st.markdown('### Auditoria Crítica de Textos de Alta Especificidade')
-st.markdown('Escreva o rascunho da sua matéria jurídica ou geral. O assistente analisará o contexto completo de forma profunda, explicando os erros técnicos e de estilo e sugerindo a reescrita adequada.')
+st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
+st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, didático e amigável de forma 100% online.')
 
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
@@ -71,15 +56,13 @@ def normalizar_texto_local(texto):
 
 @st.cache_resource
 def carregar_recursos():
-    try:
+    try: 
         modelo_path = 'modelo_jornalismo.pkl'
         database_path = 'database_sugestoes.pkl'
-
         if not os.path.exists(modelo_path):
             modelo_path = '/content/modelo_jornalismo.pkl'
         if not os.path.exists(database_path):
             database_path = '/content/database_sugestoes.pkl'
-
         modelo = joblib.load(modelo_path)
         database = joblib.load(database_path)
         return modelo, database
@@ -97,8 +80,38 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
+modelos_textos_base = {
+    'Precatórios': (
+        "O Tribunal de Justiça do Estado de Goiás (TJGO) divulgou nesta semana a atualização do cronograma de pagamento de precatórios para o exercício vigente. "
+        "Segundo a Diretoria de Precatórios do órgão, os repasses aos credores prioritários (como idosos e pessoas com deficiência) seguem de forma regular, "
+        "respeitando rigorosamente a ordem cronológica e os aportes financeiros estabelecidos pelo ente devedor estatal."
+    ),
+    'Alterações no Projudi': (
+        "Devido a uma manutenção corretiva programada nos servidores da Diretoria de Tecnologia da Informação do TJGO, o sistema Projudi registrou períodos de oscilação técnica. "
+        "Para mitigar eventuais prejuízos aos prazos processuais da advocacia, o Tribunal emitiu certidão de indisponibilidade oficial e decretou de forma automática a prorrogação dos prazos."
+    ),
+    'Precedentes Judiciais': (
+        "Em decisão recente proferida pela Seção Cível do Tribunal de Justiça de Goiás (TJGO), fixou-se tese em sede de Incidente de Resolução de Demandas Repetitivas (IRDR). "
+        "O entendimento uniformiza as decisões de primeira instância no estado de Goiás e servirá como precedente obrigatório para casos análogos."
+    ),
+    'Saúde Técnica': (
+        "O Poder Judiciário goiano acolheu, em caráter liminar, o pedido para fornecimento de tratamento de saúde especializado na comarca de Goiânia. "
+        "Na decisão, o magistrado fundamentou a necessidade do fornecimento com base no parecer técnico favorável emitido pelo Núcleo de Apoio Técnico do Judiciário (NATJUS), garantindo segurança baseada em evidência científica."
+    ),
+    'Tecnologia': (
+        "O Centro de Inteligência do TJGO iniciou o piloto de uma nova ferramenta de automação por Inteligência Artificial voltada à triagem prévia de processos em massa. "
+        "A tecnologia funciona de forma estritamente auxiliar ao fluxo de trabalho, mantendo todas as etapas de julgamento sob supervisão, revisão direta e assinatura do magistrado competente."
+    ),
+    'Violência contra a Mulher': (
+        "O Ministério Público de Goiás, em atuação conjunta com a Coordenadoria Estadual da Mulher do TJGO, formalizou a denúncia contra o suspeito de agressão na comarca de [Cidade]. "
+        "O juízo deferiu de imediato medidas protetivas de urgência previstas na Lei Maria da Penha para afastar o agressor e garantir a integridade da vítima. "
+        "
+📞 Se você ou alguém próximo vivencia situações de violência doméstica, denuncie: ligue de forma gratuita e anônima para o Ligue 180 ou acione a Polícia Militar pelo 190."
+    )
+}
+
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl. Verifique se eles estão na raiz!')
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl. Verifique se eles estão na raiz do seu repositório no GitHub!')
 else:
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
@@ -114,84 +127,78 @@ else:
             if not texto_materia.strip():
                 st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
             else:
-                sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
+                sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
 
                 alertas_detectados = []
-                relatorio_detalhado = []
+                sugestoes_banco = []
+                detalhes_erros = []
 
                 for s in sentencas:
                     sentenca_limpa = normalizar_texto_local(s)
                     probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
                     score_sensibilidade = probabilidades[1]
 
-                    if score_sensibilidade >= 0.40:
+                    if score_sensibilidade >= 0.45:
                         alertas_detectados.append(s)
-
+                        
                         justificativa_mapeada = None
                         sugestao_mapeada = None
-
+                        
                         if db_sugestoes is not None:
                             fragmento = s[:15]
                             match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
                             if not match.empty:
                                 sugestao_mapeada = match.iloc[0]['sugestao']
-                                if 'justificativa' in match.columns:
+                                if 'erro_identificado' in match.columns:
+                                    justificativa_mapeada = match.iloc[0]['erro_identificado']
+                                elif 'justificativa' in match.columns:
                                     justificativa_mapeada = match.iloc[0]['justificativa']
-
+                        
                         if not justificativa_mapeada:
-                            if tema_escolhido == 'Precatórios':
-                                justificativa_mapeada = "Acusação informal ou prejulgamento sobre pagamentos. Precatórios constitucionais obedecem a cronogramas de repasses orçamentários sob regulação do CNJ, e não a atos discricionários."
-                            elif tema_escolhido == 'Alterações no Projudi':
-                                justificativa_mapeada = "Tom inadequado para retratar instabilidades técnicas temporárias do sistema processual do Projudi."
-                            elif tema_escolhido == 'Precedentes Judiciais':
-                                justificativa_mapeada = "Equívoco de técnica jurídica. Decisões singulares de primeira instância não criam efeito vinculante generalizado imediato."
-                            elif tema_escolhido == 'Saúde Técnica':
-                                justificativa_mapeada = "Alegação infundada sobre a motivação da decisão judicial. O fornecimento de medicamentos passa pelo crivo científico do NATJUS."
+                            if tema_escolhido == 'Violência contra a Mulher':
+                                justificativa_mapeada = "Uso de terminologia que culpabiliza indiretamente a vítima ou justifica o crime baseado no comportamento ou ciúmes do agressor. Contraria o Manual Universa."
                             elif tema_escolhido == 'Tecnologia':
-                                justificativa_mapeada = "Desinformação sobre inteligência artificial. Os algoritmos atuam como auxiliares, sendo a atividade jurisdicional exclusiva de magistrados humanos."
-                            elif tema_escolhido == 'Violência contra a Mulher':
-                                justificativa_mapeada = "Violação das regras éticas de gênero (Manual Universa). Culpabilizar a vítima ou atenuar o crime justificando a conduta do agressor é inaceitável."
+                                justificativa_mapeada = "Premissa incorreta de que a IA profere sentenças de forma autônoma. No TJGO a tecnologia opera como auxiliar administrativa sob revisão e assinatura obrigatória do magistrado humano."
                             else:
-                                justificativa_mapeada = "Linguagem subjetiva, opinativa ou adjetivação excessiva que prejudica o tom de neutralidade do veículo."
-
-                        relatorio_detalhado.append({
-                            'frase_original': s,
-                            'justificativa': justificativa_mapeada,
-                            'reescrita': sugestao_mapeada
+                                justificativa_mapeada = "O trecho apresenta tom opinativo, subjetivo ou com termos tecnicamente desajustados para a cobertura profissional de pautas do TJGO."
+                                
+                        detalhes_erros.append({
+                            'trecho': s,
+                            'erro': justificativa_mapeada,
+                            'sugestao': sugestao_mapeada
                         })
 
-                st.markdown('### 🧠 Relatório e Diagnóstico Técnico do Revisor')
+                st.markdown('### 🧠 Retorno do Editor Sênior')
 
                 if len(alertas_detectados) == 0:
-                    st.markdown(f"""<div class="feedback-box">
-                        <span class="success-badge">✅ TEXTO SEGURO E NEUTRO</span><br>
-                        Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.<br><br>
-                        O tom adotado para tratar sobre <b>{tema_escolhido}</b> está perfeitamente neutro, técnico e isento.<br><br>
-                        Sua matéria está pronta e segura para publicação!
-                    </div>""", unsafe_allow_html=True)
+                    feedback_texto = f"""Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.
+
+O tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.
+
+Sua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnicas ou éticas. Parabéns pelo cuidado com a escrita!"""
+                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f"""<div class="feedback-box">
-                        <span class="error-badge">⚠️ ALERTAS ENCONTRADOS</span><br>
-                        Olá! Analisei com cuidado o seu rascunho de texto sobre <b>{tema_escolhido}</b>.<br><br>
-                        Identificamos trechos com problemas de precisão técnica ou desvios éticos. Veja o diagnóstico abaixo:
+                    Olá! Analisei com cuidado o seu rascunho sobre <b>{tema_escolhido}</b>.<br><br>
+                    A ideia central da sua matéria é ótima, mas reparei em alguns desvios factuais ou de tom que merecem atenção para garantir a blindagem jurídica e a máxima clareza técnica.<br><br>
+                    Abaixo separei cada frase crítica para analisarmos de forma transparente:
                     </div>""", unsafe_allow_html=True)
-
-                    for item in relatorio_detalhado:
-                        st.markdown("**Frase Analisada:**")
-                        st.warning(f"'{item['frase_original']}'")
-
-                        st.markdown("**❌ O que está errado (Justificativa Técnica):**")
-                        st.info(item['justificativa'])
-
-                        st.markdown("**✨ Como corrigir (Sugestão de Redação):**")
-                        if item['reescrita']:
-                            st.success(item['reescrita'])
+                    
+                    for idx, item in enumerate(detalhes_erros):
+                        st.markdown(f"### 📌 Ponto {idx+1}: Análise de Sentença")
+                        st.warning(f""{item['trecho']}"")
+                        
+                        st.markdown("**❌ Onde está o erro:**")
+                        st.error(item['erro'])
+                        
+                        st.markdown("**✨ Minha sugestão de redação:**")
+                        if item['sugestao']:
+                            st.success(item['sugestao'])
                         else:
-                            st.success("Sugestão Geral: Reescreva o trecho na ordem direta da língua portuguesa, utilizando vocabulário técnico impessoal, baseando-se estritamente em fatos e citando fontes oficiais.")
-
-                        st.markdown("--- ")
+                            st.success("Recomenda-se reescrever este período utilizando termos institucionais neutros, focando unicamente em fatos consumados de forma impessoal e removendo adjetivos coloquiais.")
+                        st.write('---')
 
     with aba_ajuda:
-        st.markdown('#### 📚 Portais de Apoio Consultivo')
+        st.markdown("""#### 📚 Portais de Apoio Consultivo""")
         for k, v in referencias_goias.items():
             st.markdown(f'* **{k}**: {v}')
