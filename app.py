@@ -6,13 +6,14 @@ import unicodedata
 import os
 
 st.set_page_config(
-    page_title='Revisor Analítico TJGO - Padrão Gemini',
+    page_title='Copiloto Editorial TJGO - Estilo Gemini',
     page_icon='⚖️',
     layout='wide'
 )
 
-st.title('⚖️ Copiloto Analítico de Redação - Padrão Gemini (TJGO)')
-st.markdown('Esta aplicação realiza a auditoria avançada de rascunhos de matérias dividindo as avaliações de sensibilidade, justificativas e regras de redação do TJGO.')
+st.title('⚖️ Copiloto de Redação & Revisor Analítico TJGO')
+st.markdown('### Auditoria Avançada com Diagnósticos Detalhados e Reescrita Dirigida')
+st.markdown('Esta aplicação utiliza Processamento de Linguagem Natural (NLP) e engenharia de regras para analisar rascunhos de matérias jornalísticas de forma extremamente didática e detalhada.')
 
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
@@ -87,31 +88,30 @@ modelos_textos_base = {
 if modelo_local is None:
     st.error('❌ Não foi possível carregar os artefatos de Inteligência Artificial (.pkl).')
 else:
-    aba_auditoria, aba_modelos = st.tabs(['🔍 Auditoria e Revisão de Texto', '💡 Gerador de Sugestões / Textos Base'])
+    aba_auditoria, aba_modelos = st.tabs(['🔍 Auditoria Avançada & Revisão Estilo Gemini', '💡 Gerador de Textos Base'])
 
     with aba_auditoria:
-        st.header('Auditoria e Feedback Estilo Gemini')
         tema_escolhido = st.selectbox(
-            'Selecione a categoria da pauta para direcionar as referências:',
+            'Selecione a pauta da sua matéria:',
             ['Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Língua Portuguesa', 'Violência contra a Mulher']
         )
 
         if tema_escolhido in referencias_goias:
-            st.info(f'📚 **Documentações Oficiais de Apoio para {tema_escolhido}:** {referencias_goias[tema_escolhido]}')
+            st.info(f'📚 **Documentações e Fontes Oficiais recomendadas:** {referencias_goias[tema_escolhido]}')
 
         texto_materia = st.text_area(
-            'Cole o seu rascunho de matéria jornalística aqui:',
+            'Cole o seu rascunho de matéria jornalística aqui para auditoria de linguagem:',
             placeholder='Insira o rascunho da sua reportagem...',
-            height=250
+            height=220
         )
 
-        if st.button('Iniciar Auditoria de Risco e Linguagem', type='primary'):
+        if st.button('Iniciar Auditoria e Gerar Relatório Detalhado', type='primary'):
             if not texto_materia.strip():
                 st.warning('Por favor, digite ou cole um texto antes de analisar.')
             else:
-                sentencas = [s.strip() for s in re.split(r'(?<=[".!?])\s+', texto_materia) if len(s.strip()) > 4]
+                sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
 
-                st.subheader('📋 Relatório Analítico de Redação')
+                st.subheader('📋 Diagnóstico Crítico de Linguagem e Termos Sensíveis')
 
                 alertas = 0
                 for s in sentencas:
@@ -124,41 +124,52 @@ else:
                         risco = "🚨 RISCO CRÍTICO" if score_sensibilidade >= 0.65 else "⚠️ RISCO MODERADO"
                         cor = "red" if score_sensibilidade >= 0.65 else "orange"
 
-                        st.markdown(f'<p style="color:{cor}; font-size:18px; font-weight:bold;">{risco} ({score_sensibilidade:.1%}): "{s}"</p>', unsafe_allow_html=True)
+                        # Exibe a sentença com caixa de atenção estilizada
+                        st.markdown(f'''
+                        <div style="padding:12px; border-left: 6px solid {cor}; background-color:#111111; border-radius: 4px; margin-bottom: 12px;">
+                            <span style="color:{cor}; font-weight:bold; font-size:15px;">{risco} (Sensibilidade: {score_sensibilidade:.1%})</span><br>
+                            <span style="font-style:italic; font-size:14px; color:#eeeeee;">"{s}"</span>
+                        </div>
+                        ''', unsafe_allow_html=True)
 
-                        # Busca exata ou aproximada por sugestões no database
+                        # Busca dados mapeados de forma exata ou aproximada no database para preencher o relatório
                         sugestao = None
-                        justificativa = None
+                        justificativa_erro = None
                         if db_sugestoes is not None:
                             fragmento = s[:15]
                             match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
                             if not match.empty:
                                 sugestao = match.iloc[0]['sugestao']
-                                if 'justificativa' in match.columns:
-                                    justificativa = match.iloc[0]['justificativa']
+                                if 'erro_identificado' in match.columns:
+                                    justificativa_erro = match.iloc[0]['erro_identificado']
 
-                        # Retorno estruturado imitando o Gemini (Problema + Correção)
-                        st.markdown("**❌ O que está errado:**")
-                        if justificativa:
-                            st.write(justificativa)
-                        else:
-                            if tema_escolhido == 'Violência contra a Mulher':
-                                st.write("O trecho pode ferir as diretrizes do Manual Universa ao utilizar justificativas sentimentais para crimes (como ciúmes), usar termos desatualizados ou faltar a indicação do Ligue 180.")
-                            elif tema_escolhido == 'Tecnologia':
-                                st.write("O texto apresenta risco ao sugerir que a tecnologia decide sentenças de forma isolada, violando as regras éticas da Resolução 332 do CNJ.")
-                            elif tema_escolhido == 'Língua Portuguesa':
-                                st.write("Há forte indício de desvios gramaticais de concordância, regência ou de estilo prolixo inadequado para redações jornalísticas ou oficiais.")
+                        # Montando o relatório estruturado e explicativo no Estilo Gemini
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            st.markdown("### ❌ O que está errado:")
+                            if justificativa_erro:
+                                st.error(justificativa_erro)
                             else:
-                                st.write("O trecho apresenta termos sensacionalistas, falta de neutralidade ou acusações sem apresentação de provas factuais.")
-
-                        if sugestao:
-                            st.markdown(f"**✨ Sugestão de Reescrita Correta:** `{sugestao}`")
-                        else:
-                            st.markdown("**✨ Recomendação Geral:** Readequar a linguagem para termos técnicos-jurídicos neutros de acordo com o Manual do Senado Federal, removendo adjetivos pessoais ou termos coloquiais.")
+                                if tema_escolhido == 'Violência contra a Mulher':
+                                    st.error("Uso de terminologia prejudicial ou inadequada. Evite adjetivos que justifiquem o agressor, termos sentimentais antigos como 'crime passional' ou culpabilização indireta da vítima. Recomenda-se adicionar a indicação do Ligue 180.")
+                                elif tema_escolhido == 'Tecnologia':
+                                    st.error("Falta de rigor factual. O trecho sugere que sistemas automatizados ou algoritmos decidem processos sozinhos sem a revisão e autoridade exclusiva de magistrados do TJGO.")
+                                elif tema_escolhido == 'Língua Portuguesa':
+                                    st.error("Presença de desvios gramaticais evidentes (como concordância verbal/nominal incorreta ou erro no uso de pronomes) ou estilo excessivamente prolixo.")
+                                else:
+                                    st.error("Presença de adjetivos de teor opinativo ou acusações unilaterais que violam o tom neutro de jornalismo técnico judiciário.")
+                        
+                        with col2:
+                            st.markdown("### ✨ Como corrigir (Versão Sugerida):")
+                            if sugestao:
+                                st.success(sugestao)
+                            else:
+                                st.warning("Prefira reescrever o período na ordem direta, focando apenas nos fatos processuais formais de maneira impessoal e neutra.")
                         st.write('---')
 
                 if alertas == 0:
-                    st.success('✅ **Excelente!** O rascunho analisado atende perfeitamente ao tom neutro, isento e com a terminologia recomendada de acordo com as regras de redação da editoria e do TJGO.')
+                    st.success('✅ **Excelente!** O texto passou na nossa auditoria avançada. Mantém integridade técnica absoluta, isenção factual e linguagem recomendada pelo TJGO.')
 
     with aba_modelos:
         st.header('💡 Sugestão de Textos e Modelos de Redação')
@@ -173,4 +184,4 @@ else:
             st.subheader(f'📝 Modelo de Redação Recomendado: {tema_modelo}')
             texto_sugerido = modelos_textos_base[tema_modelo]
             st.text_area('Copie o texto base sugerido abaixo:', value=texto_sugerido, height=180)
-            st.info('👉 **Nota para o jornalista:** Lembre-se de substituir ou complementar os detalhes com as informações da sua apuração.')
+            st.info('👉 **Nota para o jornalista:** Lembre-se de substituir ou complementar os detalhes com as informações reais da sua apuração.')
