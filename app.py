@@ -1,63 +1,46 @@
 import streamlit as st
+import joblib
+import re
+import pandas as pd
+import unicodedata
 import os
-from google import genai
-from google.genai import types
 
 st.set_page_config(
-    page_title='Copiloto Editorial TJGO & Gemini',
+    page_title='Copiloto Editorial TJGO',
     page_icon='⚖️',
     layout='centered'
 )
 
-# Interface visual limpa e amigável para leitura inspirada no Gemini
-st.markdown('''<style>
-.reportview-container {
-    background: #fafafa;
-}
-.feedback-box {
-    background-color: #f0f4f9;
-    padding: 24px;
-    border-radius: 16px;
-    border: 1px solid #d3e3fd;
-    color: #1f1f1f;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.7;
-}
-div.stButton > button:first-child {
-    background-color: #0b57d0;
-    color: white;
-    border-radius: 20px;
-    padding: 8px 24px;
-    font-weight: bold;
-    border: none;
-}
-</style>''', unsafe_allow_html=True)
+# Estilização CSS limpa e moderna de forma estritamente segura
+st.markdown('<style>.reportview-container { background: #fafafa; } .feedback-box { background-color: #f0f4f9; padding: 20px; border-radius: 16px; border: 1px solid #d3e3fd; color: #1f1f1f; font-family: sans-serif; line-height: 1.6; } .destaque-erro { background-color: #fde8e8; color: #9b1c1c; padding: 10px 14px; border-radius: 6px; border-left: 6px solid #f05252; margin: 8px 0; } .destaque-correcao { background-color: #def7ec; color: #03543f; padding: 10px 14px; border-radius: 6px; border-left: 6px solid #31c48d; margin: 8px 0; } div.stButton > button:first-child { background-color: #0b57d0; color: white; border-radius: 20px; padding: 8px 24px; font-weight: bold; border: none; }</style>', unsafe_allow_html=True)
 
-st.title('⚖️ Copiloto Editorial Dinâmico')
-st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
-st.markdown('Insira sua matéria para obter uma análise editorial espontânea e uma nova proposta de redação baseada no estado da arte em IA.')
+st.title('⚖️ Revisor Editorial Conversacional')
+st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
+st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, didático e amigável.')
 
-# --- GERENCIAMENTO SEGURO DA API KEY (3 NÍVEIS DE FALLBACK) ---
-API_KEY_FINAL = ""
+def normalizar_texto_local(texto):
+    if not isinstance(texto, str):
+        return ""
+    texto = texto.lower()
+    texto = "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    texto = re.sub(r'[^a-zA-Z0-9\s]', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    return texto
 
-# 1. Tenta obter dos Secrets nativos do Streamlit Cloud (Recomendado para Produção)
-if 'GOOGLE_API_KEY' in st.secrets:
-    API_KEY_FINAL = st.secrets['GOOGLE_API_KEY']
-# 2. Tenta obter das variáveis de ambiente locais do sistema operacional
-elif os.environ.get('GOOGLE_API_KEY'):
-    API_KEY_FINAL = os.environ.get('GOOGLE_API_KEY')
+@st.cache_resource
+def carregar_recursos():
+    try:
+        modelo_path = 'modelo_jornalismo.pkl'
+        database_path = 'database_sugestoes.pkl'
+        if not os.path.exists(modelo_path):
+            modelo_path = '/content/modelo_jornalismo.pkl'
+        if not os.path.exists(database_path):
+            database_path = '/content/database_sugestoes.pkl'
+        return joblib.load(modelo_path), joblib.load(database_path)
+    except Exception as e:
+        return None, None
 
-# 3. Permite inserção manual na barra lateral como contingência ou para substituição temporária
-st.sidebar.header('🔑 Configuração de Acesso')
-chave_manual = st.sidebar.text_input('Insira sua GOOGLE_API_KEY do Gemini:', type='password', help='Sua chave de API fica salva temporariamente na sessão do seu navegador.')
-
-if chave_manual.strip():
-    API_KEY_FINAL = chave_manual.strip()
-
-if not API_KEY_FINAL:
-    st.sidebar.warning('👉 Insira sua GOOGLE_API_KEY acima ou configure-a nos Secrets do Streamlit Cloud para ativar o Revisor!')
-else:
-    st.sidebar.success('✅ Conectado com Sucesso ao Gemini!')
+modelo_local, db_sugestoes = carregar_recursos()
 
 referencias_goias = {
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
@@ -68,61 +51,77 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
-# Instruções de Sistema Sênior de forma segura em aspas normais para evitar conflitos de compilação
-prompt_sistema_editorial = (
-    "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
-    "diretrizes éticas e de gênero (Manual Universa).
-"
-    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas.
+if modelo_local is None:
+    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos de inteligência artificial. Execute o treinamento no notebook!')
+else:
+    aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
-"
-    "Instruções de conduta:
-"
-    "1. Avalie o tom e a isenção de forma dissertativa. Se o texto estiver neutro, técnico, correto e justo "
-    "(como um comunicado oficial ou uma decisão da Justiça como o caso do Jóquei Clube ou sentenças formais), "
-    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator.
-"
-    "2. Se houver desvios, identifique os trechos exatos (sensacionalismo, opinião sem fatos, termos desatualizados, "
-    "suposições de dolo contra instituições ou culpabilização de vítimas). Critique de forma construtiva e didática, "
-    "explicando qual princípio de redação jornalística ou norma jurídica foi violado.
-"
-    "3. Forneça sempre uma proposta de reescrita polida, objetiva, fluida e de tom neutro que mantém os fatos reais intactos."
-)
+    with aba_auditoria:
+        tema_escolhido = st.selectbox(
+            'Qual é o assunto principal da sua matéria?',
+            ['Geral', 'Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Violência contra a Mulher']
+        )
 
-tema_pauta = st.selectbox(
-    'Assunto principal da reportagem:',
-    ['Geral', 'Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Violência contra a Mulher']
-)
+        texto_materia = st.text_area('Insira o seu rascunho aqui:', placeholder='Escreva livremente o seu parágrafo ou matéria completa...', height=220)
 
-if tema_pauta in referencias_goias:
-    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {referencias_goias[tema_pauta]}')
+        if st.button('Revisar com o Copiloto'):
+            if not texto_materia.strip():
+                st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
+            else:
+                sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
 
-texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o texto para que o Gemini analise e sugira as alterações...', height=220)
+                alertas_detectados = []
+                sugestoes_banco = []
+                trechos_detalhes = []
 
-if st.button('Revisar com Gemini'):
-    if not texto_jornalista.strip():
-        st.warning('Escreva uma matéria antes de submeter à análise.')
-    elif not API_KEY_FINAL:
-        st.error('❌ GOOGLE_API_KEY não localizada. Certifique-se de adicioná-la nos Secrets do Streamlit Cloud ou digitá-la na barra lateral.')
-    else:
-        with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback. Aguarde...'):
-            try:
-                client = genai.Client(api_key=API_KEY_FINAL)
-                solicitacao = f"Assunto principal: {tema_pauta}
+                for s in sentencas:
+                    sentenca_limpa = normalizar_texto_local(s)
+                    probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
+                    score_sensibilidade = probabilidades[1]
 
-Texto da matéria:
-{texto_jornalista}"
+                    if score_sensibilidade >= 0.45:
+                        alertas_detectados.append(s)
+                        sugestao_encontrada = None
+                        if db_sugestoes is not None:
+                            fragmento = s[:15]
+                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
+                            if not match.empty and match.iloc[0]['sugestao'] is not None:
+                                sugestao_encontrada = match.iloc[0]['sugestao']
 
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash-lite',
-                    contents=solicitacao,
-                    config=types.GenerateContentConfig(
-                        system_instruction=prompt_sistema_editorial,
-                        temperature=0.3
-                    )
-                )
+                        trechos_detalhes.append((s, sugestao_encontrada))
 
-                st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
-                st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
-            except Exception as e:
-                st.error(f'Erro ao se comunicar com o Gemini: {e}')
+                st.markdown('### 🧠 Retorno do Editor Sênior')
+
+                if len(alertas_detectados) == 0:
+                    feedback_texto = "Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre o assunto está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e segura para publicação! Não vejo necessidade de alterações técnicas ou éticas. Parabéns pelo cuidado com a escrita!"
+                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
+                else:
+                    introducao = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\n\nA ideia central da sua matéria é ótima, mas reparei em alguns pontos que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.\n\n"
+                    diretrizes = ""
+                    if tema_escolhido == 'Violência contra a Mulher':
+                        diretrizes = "* **Sobre a abordagem ética de gênero:** Notei que há trechos que podem soar como justificativa sentimental para as ações do agressor ou que de alguma forma transferem peso sobre o comportamento da vítima (por exemplo, ao mencionar rotinas, locais ou trajes). O Manual Universa orienta que reportagens de feminicídio ou agressão evitem termos passionais e foquem na conduta ilícita sob um tom técnico-jurídico neutro, amparando a narrativa com canais de acolhimento (como o Ligue 180).\n\n"
+                    elif tema_escolhido == 'Tecnologia':
+                        diretrizes = "* **Sobre a precisão e inovação no Judiciário:** No campo da tecnologia, é muito comum darmos a entender de forma entusiasmada (ou alarmista) que os algoritmos de Inteligência Artificial estão julgando sozinhos ou substituindo o crivo humano. Segundo as diretrizes da Resolução 332 do CNJ, as ferramentas operam estritamente como copilotos de organização de arquivos. Deixar claro que o magistrado é quem revisa e assina a decisão é essencial para não confundir o leitor.\n\n"
+                    elif tema_escolhido == 'Língua Portuguesa':
+                        diretrizes = "* **Sobre a estrutura e concordância:** Observei detalhes no fluxo das orações que fogem um pouco do padrão culto da Língua Portuguesa (como concordâncias verbais ou nominais frágeis). Para mantermos o prestígio editorial, vale a pena priorizar a ordem direta na construção das frases (sujeito + verbo + predicado), simplificando a jornada do leitor e evitando termos de duplo sentido.\n\n"
+                    else:
+                        diretrizes = "* **Sobre o tom institucional e neutralidade:** Em matérias jurídicas ou gerais, o uso de expressões com forte carga opinativa ou especulações sem o respaldo de documentos formais ou laudos técnicos do tribunal abre margem para contestações. O ideal é darmos espaço às decisões documentadas de forma impessoal.\n\n"
+
+                    detalhe_trechos = "Veja, por exemplo, o impacto que esses pontos causam na fluidez destas partes que destaquei:\n"
+                    for trecho_alerta in alertas_detectados:
+                        detalhe_trechos += f"* *\"{trecho_alerta}\"*\n"
+
+                    reescrita_sugerida = "\n### ✨ Minha proposta de reescrita:\nPara deixar o texto impecável e transparente, sugiro ajustarmos para uma redação mais direta. Veja se esta opção abaixo mantém a alma da sua apuração de forma segura:\n\n"
+                    if sugestoes_banco:
+                        reescrita_sugerida += f"\"{' '.join(sugestoes_banco)}\"\n\n"
+                    else:
+                        reescrita_sugerida += "*\"[Foque na ordem direta, cite as decisões institucionais de forma impessoal e remova termos que denotem sentimentos ou prejulgamentos de valor]\"*\n\n"
+
+                    reescrita_sugerida += "O que acha de adotar esse formato? O jornalista ganha em blindagem jurídica e o leitor em clareza factual. Conte comigo se quiser ajustar outros detalhes!"
+                    feedback_texto = introducao + diretrizes + detalhe_trechos + reescrita_sugerida
+                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
+
+    with aba_ajuda:
+        st.markdown('#### 📚 Portais de Apoio Consultivo')
+        for k, v in referencias_goias.items():
+            st.markdown(f'* **{k}**: {v}')
