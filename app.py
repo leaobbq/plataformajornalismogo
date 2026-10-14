@@ -25,8 +25,23 @@ st.markdown("""<style>
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.7;
 }
-input, textarea, [data-baseweb="select"] {
-    background-color: #ffffff !important;
+.destaque-erro {
+    background-color: #fde8e8;
+    color: #9b1c1c;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 6px solid #f05252;
+    margin: 8px 0;
+    font-weight: bold;
+}
+.destaque-correcao {
+    background-color: #def7ec;
+    color: #03543f;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border-left: 6px solid #31c48d;
+    margin: 8px 0;
+    font-weight: bold;
 }
 div.stButton > button:first-child {
     background-color: #0b57d0;
@@ -40,7 +55,7 @@ div.stButton > button:first-child {
 
 st.title('⚖️ Revisor Editorial Conversacional')
 st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
-st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, didático e amigável.')
+st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, apontando os erros de forma clara antes de sugerir a versão corrigida.')
 
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
@@ -53,7 +68,7 @@ def normalizar_texto_local(texto):
 
 @st.cache_resource
 def carregar_recursos():
-    try: 
+    try:
         modelo_path = 'modelo_jornalismo.pkl'
         database_path = 'database_sugestoes.pkl'
         if not os.path.exists(modelo_path):
@@ -61,7 +76,7 @@ def carregar_recursos():
         if not os.path.exists(database_path):
             database_path = '/content/database_sugestoes.pkl'
         return joblib.load(modelo_path), joblib.load(database_path)
-    except Exception as e:
+    except:
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
@@ -76,8 +91,8 @@ referencias_goias = {
 }
 
 if modelo_local is None:
-    st.error('❌ Não foi possível carregar os componentes de NLP (.pkl). Certifique-se de executar o retreino no notebook.')
-else:
+    st.error('❌ Não foi possível carregar os artefatos de IA (.pkl). Pratique o retreinamento no notebook.')
+else: 
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficiais'])
 
     with aba_auditoria:
@@ -95,7 +110,7 @@ else:
                 sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
 
                 alertas_detectados = []
-                sugestoes_banco = []
+                detalhes_analise = []
                 sentencas_finais = []
 
                 for s in sentencas:
@@ -106,14 +121,33 @@ else:
                     if score_sensibilidade >= 0.45:
                         alertas_detectados.append(s)
                         sugestao_mapeada = None
+                        justificativa_mapeada = None
+
                         if db_sugestoes is not None:
-                            fragmento = s[:15]
-                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
-                            if not match.empty and match.iloc[0]['sugestao'] is not None:
+                            db_sugestoes['texto_normalizado'] = db_sugestoes['texto'].apply(normalizar_texto_local)
+                            match = db_sugestoes[db_sugestoes["texto_normalizado"] == sentenca_limpa]
+                            if not match.empty:
                                 sugestao_mapeada = match.iloc[0]['sugestao']
-                        
+                                if 'erro_identificado' in match.columns:
+                                    justificativa_mapeada = match.iloc[0]['erro_identificado']
+                                elif 'justificativa' in match.columns:
+                                    justificativa_mapeada = match.iloc[0]['justificativa']
+
+                        if not justificativa_mapeada:
+                            if tema_escolhido == 'Violência contra a Mulher':
+                                justificativa_mapeada = 'Uso de expressões sentimentais ou passionalidade que podem de alguma forma culpar a conduta da vítima ou atenuar o ato do agressor de gênero, infringindo as diretrizes do Manual Universa.'
+                            elif tema_escolhido == 'Tecnologia':
+                                justificativa_mapeada = 'O período apresenta vulnerabilidade técnica ao insinuar que a IA profere julgamentos de forma isolada, infringindo os limites éticos de governança da Resolução 332 do CNJ.'
+                            else:
+                                justificativa_mapeada = 'O trecho apresenta adjetivos de teor subjetivo ou termos coloquiais desajustados para a cobertura técnica e impessoal de processos jurídicos.'
+
+                        detalhes_analise.append({
+                            'original': s,
+                            'erro': justificativa_mapeada,
+                            'sugestao': sugestao_mapeada
+                        })
+
                         if sugestao_mapeada:
-                            sugestoes_banco.append(sugestao_mapeada)
                             sentencas_finais.append(sugestao_mapeada)
                         else:
                             sentencas_finais.append(s)
@@ -123,31 +157,35 @@ else:
                 st.markdown('### 🧠 Retorno do Editor Sênior')
 
                 if len(alertas_detectados) == 0:
-                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e totalmente segura para publicação! Não há necessidade de alterações técnicas ou éticas. Parabéns pelo cuidado com a escrita!"
+                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\\n\\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional de tribunais.\\n\\nSua matéria está impecável e totalmente segura para publicação! Parabéns pelo excelente trabalho de escrita!"
+                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
                 else:
-                    introducao = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\n\nA ideia central do seu texto está ótima, mas identifiquei alguns pontos de atenção que merecem cuidado para evitar desvios em relação aos manuais de redação, estilo e diretrizes éticas.\n\n"
-                    
-                    diretrizes = ""
-                    if tema_escolhido == 'Violência contra a Mulher':
-                        diretrizes = "* **Sobre a abordagem de gênero:** Notei o uso de expressões passionais ou justificativas emocionais ligadas à atitude do agressor (como crises de ciúmes) ou termos antigos como 'crime passional'. O *Manual Universa* orienta que reportagens sobre agressões e feminicídios foquem estritamente na conduta jurídica de forma impessoal e neutra, além de exigir a indicação de canais de socorro (como o Ligue 180).\n\n"
-                    elif tema_escolhido == 'Tecnologia':
-                        diretrizes = "* **Sobre a precisão e governança algorítmica:** O trecho passa a impressão de que ferramentas de inteligência artificial proferem decisões e assinam julgamentos sozinhas. Conforme a Resolução 332 do CNJ, esses modelos operam puramente como copilotos administrativos para triagem de petições, e a responsabilidade de assinatura reside exclusivamente no magistrado humano.\n\n"
-                    elif tema_escolhido == 'Língua Portuguesa':
-                        diretrizes = "* **Sobre a estrutura e concordância:** Observei trechos com concordância nominal e verbal vulneráveis, além de construções com pronomes relativos de forma incorreta (como 'cujo o'). Recomendo prezar pela ordem direta na oração para polir a legibilidade e manter o prestígio editorial da redação.\n\n"
-                    else:
-                        diretrizes = "* **Sobre a neutralidade e isenção de valor:** O texto utiliza jargões informais, juízos de valor opinativos ou faz acusações contra partes sem embasar o andamento do processo técnico correspondente no tribunal.\n\n"
+                    introducao_texto = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\\n\\nA ideia central do seu texto está ótima, mas identifiquei alguns pontos de atenção que merecem cuidado para evitar desvios em relação aos manuais de redação, estilo e diretrizes éticas.\\n\\nAbaixo listo de forma transparente o impacto que esses pontos causam na fluidez do seu rascunho:"
+                    st.markdown(f'<div class="feedback-box">{introducao_texto}</div>', unsafe_allow_html=True)
+                    st.write("")
 
-                    detalhe_trechos = "Veja onde esses desvios factuais ou de estilo enfraquecem a neutralidade da pauta:\n"
-                    for trecho_alerta in alertas_detectados:
-                        detalhe_trechos += f"* *'{trecho_alerta}'*\n"
+                    # EXPOSIÇÃO DINÂMICA DE ERROS E SUGESTÕES
+                    st.markdown('### 🔍 Mapeamento e Destaques de Alterações')
+                    for idx, item in enumerate(detalhes_analise):
+                        st.markdown(f"#### 📌 Parágrafo/Período {idx+1}")
+                        st.markdown("**Original com desvio localizado (vermelho):**")
+                        st.markdown(f'<div class="destaque-erro">{item["original"]}</div>', unsafe_allow_html=True)
+                        
+                        st.markdown("**❌ Onde está o erro:**")
+                        st.error(item['erro'])
 
-                    reescrita_sugerida = "\n### ✨ Minha proposta de redação corrigida:\nPara deixar o seu texto impecável, isento e com máxima precisão jurídica, sugiro unificar a redação das sentenças sob este formato:\n\n"
-                    texto_recomposto_final = " ".join(sentencas_finais)
-                    reescrita_sugerida += f"`{texto_recomposto_final}`\n\n"
-                    reescrita_sugerida += "O que acha de adotar essa versão? O veículo de imprensa ganha em precisão e o leitor em integridade factual. Estou à disposição para debatermos outros trechos!"
-                    feedback_texto = introducao + diretrizes + detalhe_trechos + reescrita_sugerida
+                        if item['sugestao']:
+                            st.markdown("**✨ Minha sugestão de novo texto para esta sentença (verde):**")
+                            st.markdown(f'<div class="destaque-correcao">{item["sugestao"]}</div>', unsafe_allow_html=True)
+                        else:
+                            st.info("💡 *Recomendação:* Procure reescrever este trecho priorizando termos técnicos institucionais e mantendo a neutralidade do texto sem julgamento de valor.")
+                        st.write("---")
 
-                st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
+                    # PROPOSTA RECOMPOSTA INTEGRADA PARA CÓPIA DIRETA
+                    st.subheader('📝 Proposta de Versão Recomposta')
+                    st.info('Aqui está a cópia integral do seu rascunho com os devidos ajustes recomendados aplicados:')
+                    texto_final_recomposto = " ".join(sentencas_finais)
+                    st.text_area('Copiar texto corrigido:', value=texto_final_recomposto, height=180)
 
     with aba_ajuda:
         st.markdown('#### 📚 Portais de Apoio Consultivo')
