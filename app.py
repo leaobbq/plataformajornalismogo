@@ -53,7 +53,7 @@ def normalizar_texto_local(texto):
 
 @st.cache_resource
 def carregar_recursos():
-    try:
+    try: 
         modelo_path = 'modelo_jornalismo.pkl'
         database_path = 'database_sugestoes.pkl'
         if not os.path.exists(modelo_path):
@@ -76,7 +76,7 @@ referencias_goias = {
 }
 
 if modelo_local is None:
-    st.error('❌ Não foi possível carregar os artefatos de IA (.pkl). Pratique o retreinamento no notebook.')
+    st.error('❌ Não foi possível carregar os componentes de NLP (.pkl). Certifique-se de executar o retreino no notebook.')
 else:
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficiais'])
 
@@ -111,7 +111,7 @@ else:
                             match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
                             if not match.empty and match.iloc[0]['sugestao'] is not None:
                                 sugestao_mapeada = match.iloc[0]['sugestao']
-
+                        
                         if sugestao_mapeada:
                             sugestoes_banco.append(sugestao_mapeada)
                             sentencas_finais.append(sugestao_mapeada)
@@ -126,7 +126,7 @@ else:
                     feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e totalmente segura para publicação! Não há necessidade de alterações técnicas ou éticas. Parabéns pelo cuidado com a escrita!"
                 else:
                     introducao = f"Olá! Analisei com cuidado o seu rascunho sobre **{tema_escolhido}**.\n\nA ideia central do seu texto está ótima, mas identifiquei alguns pontos de atenção que merecem cuidado para evitar desvios em relação aos manuais de redação, estilo e diretrizes éticas.\n\n"
-
+                    
                     diretrizes = ""
                     if tema_escolhido == 'Violência contra a Mulher':
                         diretrizes = "* **Sobre a abordagem de gênero:** Notei o uso de expressões passionais ou justificativas emocionais ligadas à atitude do agressor (como crises de ciúmes) ou termos antigos como 'crime passional'. O *Manual Universa* orienta que reportagens sobre agressões e feminicídios foquem estritamente na conduta jurídica de forma impessoal e neutra, além de exigir a indicação de canais de socorro (como o Ligue 180).\n\n"
