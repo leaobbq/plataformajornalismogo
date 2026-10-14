@@ -9,7 +9,6 @@ st.set_page_config(
     layout='centered'
 )
 
-# Interface visual limpa e amigável para leitura
 st.markdown('''<style>
 .reportview-container {
     background: #fafafa;
@@ -37,14 +36,11 @@ st.title('⚖️ Copiloto Editorial Dinâmico')
 st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
 st.markdown('Insira sua matéria para obter uma análise editorial espontânea e uma nova proposta de redação baseada no estado da arte em IA.')
 
-# Injeta a chave de forma transparente obtida pelo Colab no ambiente de execução do Streamlit
 API_KEY_DASHBOARD = ""
 
-# Permite também inserção manual na barra lateral caso o usuário queira testar outra chave
 st.sidebar.header('🔑 Configuração de Acesso')
 chave_manual = st.sidebar.text_input('Se preferir, insira uma nova GOOGLE_API_KEY:', type='password')
 
-# Define a chave final a ser utilizada no processo de chamada
 API_KEY_FINAL = chave_manual if chave_manual.strip() else API_KEY_DASHBOARD
 
 referencias_goias = {
@@ -56,24 +52,17 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
-# Instruções de Sistema Sênior para modelar o comportamento do Gemini de forma didática e isenta
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
-    "diretrizes éticas e de gênero (Manual Universa).
-"
-    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas.
-
-"
-    "Instruções de conduta:
-"
+    "diretrizes éticas e de gênero (Manual Universa).\n"
+    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas.\n\n"
+    "Instruções de conduta:\n"
     "1. Avalie o tom e a isenção de forma dissertativa. Se o texto estiver neutro, técnico, correto e justo "
     "(como um comunicado oficial ou uma decisão da Justiça como o caso do Jóquei Clube ou sentenças formais), "
-    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator.
-"
+    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator.\n"
     "2. Se houver desvios, identifique os trechos exatos (sensacionalismo, opinião sem fatos, termos desatualizados, "
     "suposições de dolo contra instituições ou culpabilização de vítimas). Critique de forma construtiva e didática, "
-    "explicando qual princípio de redação jornalística ou norma jurídica foi violado.
-"
+    "explicando qual princípio de redação jornalística ou norma jurídica foi violado.\n"
     "3. Forneça sempre uma proposta de reescrita polida, objetiva, fluida e de tom neutro que mantém os fatos reais intactos."
 )
 
@@ -96,11 +85,8 @@ if st.button('Revisar com Gemini'):
         with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback. Aguarde...'):
             try:
                 client = genai.Client(api_key=API_KEY_FINAL)
-                solicitacao = f"Assunto principal: {tema_pauta}
+                solicitacao = f"Assunto principal: {tema_pauta}\n\nTexto da matéria:\n{texto_jornalista}"
 
-Texto da matéria:
-{texto_jornalista}"
-                
                 response = client.models.generate_content(
                     model='gemini-2.5-flash-lite',
                     contents=solicitacao,
@@ -109,7 +95,7 @@ Texto da matéria:
                         temperature=0.3
                     )
                 )
-                
+
                 st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
                 st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
             except Exception as e:
