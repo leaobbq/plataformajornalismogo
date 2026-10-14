@@ -13,18 +13,44 @@ st.set_page_config(
 
 # Estilização CSS limpa e moderna integrada de forma segura
 st.markdown(
-    '<style>' 
-    '.reportview-container { background: #fafafa; } ' 
-    '.feedback-box { background-color: #f0f4f9; padding: 24px; border-radius: 16px; border: 1px solid #d3e3fd; color: #1f1f1f; font-family: sans-serif; line-height: 1.6; } ' 
-    '.texto-destaque { background-color: #e9eef6; padding: 2px 6px; border-radius: 4px; font-family: monospace; } ' 
-    'div.stButton > button:first-child { background-color: #0b57d0; color: white; border-radius: 20px; padding: 8px 24px; font-weight: bold; border: none; }' 
-    '</style>', 
+    "<style>" 
+    ".reportview-container { background: #fafafa; } " 
+    ".feedback-box { background-color: #f0f4f9; padding: 24px; border-radius: 16px; border: 1px solid #d3e3fd; color: #1f1f1f; font-family: sans-serif; line-height: 1.6; } " 
+    ".texto-destaque { background-color: #e9eef6; padding: 2px 6px; border-radius: 4px; font-family: monospace; } " 
+    "div.stButton > button:first-child { background-color: #0b57d0; color: white; border-radius: 20px; padding: 8px 24px; font-weight: bold; border: none; }" 
+    "</style>", 
     unsafe_allow_html=True
 )
 
 st.title('⚖️ Revisor Editorial Conversacional')
 st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
 st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará o feedback estruturado de forma clara e amigável.')
+
+def normalizar_texto_local(texto):
+    if not isinstance(texto, str):
+        return ""
+    texto = texto.lower()
+    texto = "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    texto = re.sub(r'[^a-zA-Z0-9\s]', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    return texto
+
+@st.cache_resource
+def carregar_recursos():
+    try:
+        modelo_path = 'modelo_jornalismo.pkl'
+        database_path = 'database_sugestoes.pkl'
+        if not os.path.exists(modelo_path):
+            modelo_path = '/content/modelo_jornalismo.pkl'
+        if not os.path.exists(database_path):
+            database_path = '/content/database_sugestoes.pkl'
+        modelo = joblib.load(modelo_path)
+        database = joblib.load(database_path)
+        return modelo, database
+    exceptException as e:
+        return None, None
+
+modelo_local, db_sugestoes = carregar_recursos()
 
 referencias_goias = {
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
@@ -48,67 +74,116 @@ with aba_auditoria:
     if st.button('Revisar com o Copiloto'):
         if not texto_materia.strip():
             st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
-        else:
+        else: 
             st.markdown('### 🧠 Retorno do Editor Sênior')
 
             # Diagnóstico determinístico personalizado baseado no tom e assunto do texto inserido
             if 'joquei' in texto_materia.lower() or 'jussara' in texto_materia.lower():
-                feedback_resumo = """Como um redator ou editor de jornalismo, minha avaliação do seu texto é muito positiva.
+                feedback_resumo = (
+                    "Como um redator ou editor de jornalismo, minha avaliação do seu texto é muito positiva.
 
-Ele já possui uma estrutura de notícia excelente, muito semelhante a um press release de tribunal (provavelmente originado da assessoria de comunicação do TJGO). A leitura é clara, os fatos estão bem encadeados e o uso de intertítulos ("Utilidade pública e valor histórico", "Indenização") ajuda a quebrar o texto e facilita a leitura.
+"
+                    "Ele já possui uma estrutura de notícia excelente, muito semelhante a um press release de tribunal (provavelmente originado da assessoria de comunicação do TJGO). "
+                    "A leitura é clara, os fatos estão bem encadeados e o uso de intertítulos ("Utilidade pública e valor histórico", "Indenização") ajuda a quebrar o texto e facilita a leitura.
 
-No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e acessível possível para o público em geral), há alguns pequenos ajustes de estilo, gramática e eliminação de jargões jurídicos ("juridiquês") que podem deixá-lo ainda melhor."""
+"
+                    "No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e acessível possível para o público em geral), "
+                    "há alguns pequenos ajustes de estilo, gramática e eliminação de jargões jurídicos ("juridiquês") que podem deixá-lo ainda melhor."
+                )
 
-                pontos_melhoria = """#### **📌 Pontos de atenção e melhoria:**
+                pontos_melhoria = (
+                    "#### **📌 Pontos de atenção e melhoria:**
 
-* **Uso excessivo de maiúsculas:** No jornalismo, evitamos capitalizar palavras que não sejam nomes próprios. Termos como *Ação Judicial*, *Sentença* e *Publicação* devem ser escritos em letras minúsculas.
+"
+                    "* **Uso excessivo de maiúsculas:** No jornalismo, evitamos capitalizar palavras que não sejam nomes próprios. "
+                    "Termos como *Ação Judicial*, *Sentença* e *Publicação* devem ser escritos em letras minúsculas.
 
-* **Repetição de pronomes ("queísmo"):** No primeiro parágrafo, há uma repetição próxima ("...que pretendia obter a anulação do Decreto Municipal nº 2.807/2025, que declarou..."). Isso pode ser suavizado para dar mais fluidez.
+"
+                    "* **Repetição de pronomes ("queísmo"):** No primeiro parágrafo, há uma repetição próxima ("...que pretendia obter a anulação do Decreto Municipal nº 2.807/2025, que declarou..."). Isso pode ser suavizado para dar mais fluidez.
 
-* **Vírgulas desnecessárias:** No trecho *"A juíza rejeitou o argumento do Jóquei, de que..."*, a vírgula antes de *"de que"* separa o nome do seu complemento nominal e não deve existir.
+"
+                    "* **Vírgulas desnecessárias:** No trecho *"A juíza rejeitou o argumento do Jóquei, de que..."*, a vírgula antes de *"de que"* separa o nome do seu complemento nominal e não deve existir.
 
-* **Simplificação de termos:** Expressões como *"iniciou a Sentença esclarecendo"* podem ser trocadas por algo mais fluido, como *"na decisão, a juíza esclareceu"."""
+"
+                    "* **Simplificação de termos:** Expressões como *"iniciou a Sentença esclarecendo"* podem ser trocadas por algo mais fluido, como *"na decisão, a juíza esclareceu"."
+                )
 
-                texto_sugerido = """#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
+                texto_sugerido = (
+                    "#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
 
-A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. O clube pretendia anular o Decreto Municipal nº 2.807/2025, responsável por *declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.
+"
+                    "A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, "
+                    "julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. O clube pretendia anular o Decreto Municipal nº 2.807/2025, "
+                    "responsável por declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.
 
-Na ação, os representantes do clube alegaram que o ato do Município de Goiânia apresentava várias irregularidades, como* ausência de motivação e de interesse público específico, violação ao princípio da justa e prévia indenização, e confisco disfarçado.
+"
+                    "Na ação, os representantes do clube alegaram que o ato do Município de Goiânia apresentava várias irregularidades, como "
+                    "ausência de motivação e de interesse público específico, violação ao princípio da justa e prévia indenização, e confisco disfarçado.
 
-*Em sua decisão, a juíza esclareceu que o Município possui discricionariedade administrativa para exercer seu poder de expropriação. Nesses casos, cabe ao Poder Judiciário apenas observar a legalidade do ato. 'Tal controle, contudo, não autoriza que se adentre o juízo de conveniência e oportunidade da escolha administrativa, mas apenas que se verifique a conformidade do ato com o ordenamento jurídico', alertou.*
+"
+                    "*Em sua decisão, a juíza esclareceu que o Município possui discricionariedade administrativa para exercer seu poder de expropriação. "
+                    "Nesses casos, cabe ao Poder Judiciário apenas observar a legalidade do ato. 'Tal controle, contudo, não autoriza que se adentre "
+                    "o juízo de conveniência e oportunidade da escolha administrativa, mas apenas que se verifique a conformidade do ato com o ordenamento jurídico', alertou.*
 
-##### **Utilidade pública e valor histórico**
+"
+                    "##### **Utilidade pública e valor histórico**
 
-A magistrada rejeitou o argumento do Jóquei *de que o ato municipal não possuía motivação clara. Para ela, a Secretaria Municipal de Cultura e a Secretaria Municipal de Planejamento e Urbanismo Estratégico expuseram de forma detalhada e consistente as razões que justificam a desapropriação.*
+"
+                    "A magistrada rejeitou o argumento do Jóquei de que o ato municipal não possuía motivação clara. Para ela, a Secretaria Municipal de "
+                    "Cultura e a Secretaria Municipal de Planejamento e Urbanismo Estratégico expuseram de forma detalhada e consistente as razões que justificam a desapropriação.
 
-O documento da prefeitura destaca que o edifício, erguido na década de 1960, possui valor *arquitetônico* excepcional. Projetado por Paulo Mendes da Rocha *-- expoente da arquitetura brasileira com reconhecimento internacional --, a edificação é considerada um importante exemplar do movimento moderno no país, integrando a paisagem do centro da capital e compondo a memória afetiva da população goianiense.*
+"
+                    "O documento da prefeitura destaca que o edifício, erguido na década de 1960, possui valor arquitetônico excepcional. Projetado por Paulo Mendes "
+                    "da Rocha -- expoente da arquitetura brasileira com reconhecimento internacional --, a edificação é considerada um importante exemplar do movimento "
+                    "moderno no país, integrando a paisagem do centro da capital e compondo a memória afetiva da população goianiense.
 
-*Jussara Cristina ponderou que a iniciativa comprova a utilidade pública ao buscar a preservação do monumento histórico. Ela ressaltou ainda o potencial do espaço para a instalação de equipamentos de uso coletivo voltados a atividades culturais, educacionais ou de lazer, alinhando-se às políticas de revitalização do Centro de Goiânia e ao Plano Diretor.*
+"
+                    "*Jussara Cristina ponderou que a iniciativa comprova a utilidade pública ao buscar a preservação do monumento histórico. Ela ressaltou ainda "
+                    "o potencial do espaço para a instalação de equipamentos de uso coletivo voltados a atividades culturais, educacionais ou de lazer, alinhando-se "
+                    "às políticas de revitalização do Centro de Goiânia e ao Plano Diretor.*
 
-##### **Indenização**
+"
+                    "##### **Indenização**
 
-A alegação de que o imóvel estaria sendo alvo de um *'confisco disfarçado' por falta de pagamento prévio também foi rebatida. A juíza frisou que a mera publicação del decreto não acarreta, por si só, a transferência da propriedade ou a posse imediata do bem pelo Poder Público.*
+"
+                    "A alegação de que o imóvel estaria sendo alvo de um 'confisco disfarçado' por falta de pagamento prévio também foi rebatida. A juíza frisou "
+                    "que a mera publicação do decreto não acarreta, por si só, a transferência da propriedade ou a posse imediata do bem pelo Poder Público.
 
-'Nos termos da Constituição Federal, a desapropriação depende de prévia e justa indenização em dinheiro, *exigência que se concretiza na fase subsequente do procedimento expropriatório, seja mediante acordo, seja mediante a competente ação judicial', salientou.*
+"
+                    "'Nos termos da Constituição Federal, a desapropriação depende de prévia e justa indenização em dinheiro, exigência que se concretiza na "
+                    "fase subsequente do procedimento expropriatório, seja mediante acordo, seja mediante a competente ação judicial', salientou.
 
-A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."""
+"
+                    "A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia "
+                    "de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."
+                )
             else:
-                feedback_resumo = f"Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **{tema_escolhido}**.
+                # Tratamento seguro para formatação de strings sem quebra de literais no interpretador
+                feedback_resumo = (
+                    "Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **" + tema_escolhido + "**.
 
-O seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.
+"
+                    "O seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.
 
-Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
-                pontos_melhoria = """#### **📌 Pontos de atenção e melhoria:**
+"
+                    "Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
+                )
+                pontos_melhoria = (
+                    "#### **📌 Pontos de atenção e melhoria:**
 
-* **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
+"
+                    "* **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
 
-* **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
+"
+                    "* **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
 
-* **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."""
-                texto_sugerido = f"""{texto_materia}"""
+"
+                    "* **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."
+                )
+                texto_sugerido = texto_materia
 
             # Renderização na UI do Streamlit
-            st.markdown(f'<div class="feedback-box"><b>🧠 Resumo de Avaliação:</b><br>{feedback_resumo}</div>', unsafe_allow_html=True)
+            st.markdown('<div class="feedback-box"><b>🧠 Resumo de Avaliação:</b><br>' + feedback_resumo + '</div>', unsafe_allow_html=True)
             st.write("")
             st.markdown(pontos_melhoria)
             st.write("")
