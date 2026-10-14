@@ -1,141 +1,116 @@
 import streamlit as st
-import joblib
-import re
-import pandas as pd
-import unicodedata
 import os
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import make_pipeline
+from google import genai
+from google.genai import types
 
 st.set_page_config(
-    page_title='Copiloto Editorial TJGO (IA Evolutiva)',
+    page_title='Copiloto Editorial TJGO & Gemini',
     page_icon='⚖️',
     layout='centered'
 )
 
-# CSS isolado de forma limpa e segura contra erros decimais
-st.markdown('<style>.reportview-container { background: #fafafa; } .feedback-box { background-color: #f0f4f9; padding: 20px; border-radius: 16px; border: 1px solid #d3e3fd; color: #1f1f1f; font-family: sans-serif; line-height: 1.6; } .destaque-erro { background-color: #fde8e8; color: #9b1c1c; padding: 10px 14px; border-radius: 6px; border-left: 6px solid #f05252; margin: 8px 0; } .destaque-correcao { background-color: #def7ec; color: #03543f; padding: 10px 14px; border-radius: 6px; border-left: 6px solid #31c48d; margin: 8px 0; }</style>', unsafe_allow_html=True)
+# Interface visual limpa e amigável para leitura
+st.markdown('''<style>
+.reportview-container {
+    background: #fafafa;
+}
+.feedback-box {
+    background-color: #f0f4f9;
+    padding: 24px;
+    border-radius: 16px;
+    border: 1px solid #d3e3fd;
+    color: #1f1f1f;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.7;
+}
+div.stButton > button:first-child {
+    background-color: #0b57d0;
+    color: white;
+    border-radius: 20px;
+    padding: 8px 24px;
+    font-weight: bold;
+    border: none;
+}
+</style>''', unsafe_allow_html=True)
 
-st.title('⚖️ Copiloto Editorial & Revisor Evolutivo')
-st.markdown('### Um assistente de redação que aprende com cada matéria inserida no sistema!')
+st.title('⚖️ Copiloto Editorial Dinâmico')
+st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
+st.markdown('Insira sua matéria para obter uma análise editorial espontânea e uma nova proposta de redação baseada no estado da arte em IA.')
 
-def normalizar_texto_local(texto):
-    if not isinstance(texto, str):
-        return ""
-    texto = texto.lower()
-    texto = "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
-    texto = re.sub(r'[^a-zA-Z0-9\s]', ' ', texto)
-    texto = re.sub(r'\s+', ' ', texto).strip()
-    return texto
+# Injeta a chave de forma transparente obtida pelo Colab no ambiente de execução do Streamlit
+API_KEY_DASHBOARD = ""
 
-@st.cache_resource
-def carregar_recursos():
-    try:
-        modelo_path = 'modelo_jornalismo.pkl'
-        database_path = 'database_sugestoes.pkl'
-        if not os.path.exists(modelo_path):
-            modelo_path = '/content/modelo_jornalismo.pkl'
-        if not os.path.exists(database_path):
-            database_path = '/content/database_sugestoes.pkl'
-        return joblib.load(modelo_path), joblib.load(database_path)
-    except Exception as e:
-        return None, None
+# Permite também inserção manual na barra lateral caso o usuário queira testar outra chave
+st.sidebar.header('🔑 Configuração de Acesso')
+chave_manual = st.sidebar.text_input('Se preferir, insira uma nova GOOGLE_API_KEY:', type='password')
 
-modelo_local, db_sugestoes = carregar_recursos()
+# Define a chave final a ser utilizada no processo de chamada
+API_KEY_FINAL = chave_manual if chave_manual.strip() else API_KEY_DASHBOARD
 
-if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos modelo_jornalismo.pkl ou database_sugestoes.pkl. Execute as células de treino do notebook Colab antes.')
-else:
-    aba_auditoria, aba_alimentar = st.tabs(['🔍 Analisar Rascunho', '📈 Alimentar Inteligência do Sistema'])
+referencias_goias = {
+    'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
+    'Alterações no Projudi': '[Sistemas e Portarias de Indisponibilidade do Projudi](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
+    'Precedentes Judiciais': '[Jurisprudência Unificada e Súmulas do TJGO](https://www.tjgo.jus.br/index.php/jurisprudencia)',
+    'Saúde Técnica': '[Comitê de Saúde do NATJUS de Goiás](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
+    'Tecnologia': '[Estratégia Brasileira de IA (MCTI)](https://www.gov.br/mcti/pt-br) | [Diretrizes de IA na Justiça (CNJ - Resolução 332)](https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/inteligencia-artificial/)',
+    'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
+}
 
-    with aba_auditoria:
-        tema_escolhido = st.selectbox(
-            'Qual é o assunto principal da sua matéria?',
-            ['Geral', 'Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Violência contra a Mulher']
-        )
+# Instruções de Sistema Sênior para modelar o comportamento do Gemini de forma didática e isenta
+prompt_sistema_editorial = (
+    "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
+    "diretrizes éticas e de gênero (Manual Universa).
+"
+    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas.
 
-        texto_materia = st.text_area('Insira o seu rascunho aqui:', placeholder='Escreva livremente o seu parágrafo ou matéria completa...', height=220)
+"
+    "Instruções de conduta:
+"
+    "1. Avalie o tom e a isenção de forma dissertativa. Se o texto estiver neutro, técnico, correto e justo "
+    "(como um comunicado oficial ou uma decisão da Justiça como o caso do Jóquei Clube ou sentenças formais), "
+    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator.
+"
+    "2. Se houver desvios, identifique os trechos exatos (sensacionalismo, opinião sem fatos, termos desatualizados, "
+    "suposições de dolo contra instituições ou culpabilização de vítimas). Critique de forma construtiva e didática, "
+    "explicando qual princípio de redação jornalística ou norma jurídica foi violado.
+"
+    "3. Forneça sempre uma proposta de reescrita polida, objetiva, fluida e de tom neutro que mantém os fatos reais intactos."
+)
 
-        if st.button('Revisar com o Copiloto', key='btn_revisar'):
-            if not texto_materia.strip():
-                st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
-            else:
-                sentencas = [s.strip() for s in re.split(r'(?<=[.!?])\s+', texto_materia) if len(s.strip()) > 4]
-                alertas_detectados = []
-                trechos_detalhes = []
+tema_pauta = st.selectbox(
+    'Assunto principal da reportagem:',
+    ['Geral', 'Precatórios', 'Alterações no Projudi', 'Precedentes Judiciais', 'Saúde Técnica', 'Tecnologia', 'Violência contra a Mulher']
+)
 
-                for s in sentencas:
-                    sentenca_limpa = normalizar_texto_local(s)
-                    probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
-                    score_sensibilidade = probabilidades[1]
+if tema_pauta in referencias_goias:
+    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {referencias_goias[tema_pauta]}')
 
-                    if score_sensibilidade >= 0.45:
-                        alertas_detectados.append(s)
-                        sugestao_encontrada = None
-                        if db_sugestoes is not None:
-                            fragmento = s[:15]
-                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
-                            if not match.empty and match.iloc[0]['sugestao'] is not None:
-                                sugestao_encontrada = match.iloc[0]['sugestao']
+texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o texto para que o Gemini analise e sugira as alterações...', height=220)
 
-                        trechos_detalhes.append((s, sugestao_encontrada))
+if st.button('Revisar com Gemini'):
+    if not texto_jornalista.strip():
+        st.warning('Escreva uma matéria antes de submeter à análise.')
+    elif not API_KEY_FINAL:
+        st.error('❌ GOOGLE_API_KEY não localizada. Certifique-se de adicioná-la nos Secrets do Colab ou na barra lateral para habilitar a consulta ao Gemini.')
+    else:
+        with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback. Aguarde...'):
+            try:
+                client = genai.Client(api_key=API_KEY_FINAL)
+                solicitacao = f"Assunto principal: {tema_pauta}
 
-                st.markdown('### 🧠 Retorno do Editor Sênior')
-
-                if len(alertas_detectados) == 0:
-                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente.\n\nO tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Você conseguiu transmitir a informação factual de maneira direta, sem dar espaço a ambiguidades ou adjetivações excessivas, o que é fundamental no jornalismo profissional.\n\nSua matéria está pronta e totalmente segura para publicação! Parabéns pelo cuidado com a escrita!"
-                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown(f"### 📌 Análise de Sensibilidade ({tema_escolhido})")
-                    for original, sugestao in trechos_detalhes:
-                        st.markdown("**Original com desvio localizado (vermelho):**")
-                        st.markdown(f'<div class="destaque-erro">{original}</div>', unsafe_allow_html=True)
-                        if sugestao:
-                            st.markdown("**Sugestão de redação polida (verde):**")
-                            st.markdown(f'<div class="destaque-correcao">{sugestao}</div>', unsafe_allow_html=True)
-                        else:
-                            st.info("💡 *Recomendação:* Procure reescrever este período utilizando termos técnicos e neutros, evitando adjetivos pessoais ou tom coloquial.")
-                        st.write("---")
-
-    with aba_alimentar:
-        st.header('📈 Alimentar Inteligência do Sistema')
-        st.markdown('Insira novas sentenças avaliadas para treinar o classificador local de forma ativa. Assim o sistema evolui a cada matéria nova inserida!')
-
-        novo_texto = st.text_area('Frase ou parágrafo novo:', placeholder='Exemplo: O prefeito assinou a portaria municipal ontem de manhã.')
-        opcao_classe = st.radio('Classificação técnica da frase:', ('Seguro / Neutro (Classe 0)', 'Sensível / Precisa de Atenção (Classe 1)'))
-        nova_sugestao = st.text_input('Sugestão de melhoria (Opcional):', placeholder='Exemplo de reescrita ideal para este caso...')
-
-        if st.button('Gravar e Retreinar Sistema', type='primary'):
-            if not novo_texto.strip():
-                st.warning('Preencha o campo de texto antes de prosseguir.')
-            else:
-                classe_num = 1 if 'Classe 1' in opcao_classe else 0
+Texto da matéria:
+{texto_jornalista}"
                 
-                # Adicionar ao banco de dados existente
-                nova_linha = pd.DataFrame([{
-                    'texto': novo_texto,
-                    'sensivel': classe_num,
-                    'tema': 'Geral',
-                    'sugestao': nova_sugestao if nova_sugestao.strip() else None
-                }])
-                
-                db_atualizado = pd.concat([db_sugestoes, nova_linha], ignore_index=True).drop_duplicates(subset=['texto']).reset_index(drop=True)
-                db_atualizado['texto_treino'] = db_atualizado['texto'].apply(normalizar_texto_local)
-                
-                # Retreinamento dinâmico em tempo de execução
-                pipeline_novo = make_pipeline(
-                    TfidfVectorizer(ngram_range=(1, 2), sublinear_tf=True),
-                    LogisticRegression(C=2.5, class_weight='balanced')
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash-lite',
+                    contents=solicitacao,
+                    config=types.GenerateContentConfig(
+                        system_instruction=prompt_sistema_editorial,
+                        temperature=0.3
+                    )
                 )
-                pipeline_novo.fit(db_atualizado['texto_treino'], db_atualizado['sensivel'])
                 
-                # Salvar arquivos de volta fisicamente
-                joblib.dump(pipeline_novo, 'modelo_jornalismo.pkl')
-                joblib.dump(db_atualizado, 'database_sugestoes.pkl')
-                if os.path.exists('/content/'):
-                    joblib.dump(pipeline_novo, '/content/modelo_jornalismo.pkl')
-                    joblib.dump(db_atualizado, '/content/database_sugestoes.pkl')
-                
-                st.success('🎉 Sensacional! O sistema foi alimentado com o novo exemplo, o modelo preditivo foi retreinado e está atualizado com sucesso!')
-                st.info('Reinicie a página ou execute uma nova consulta para testar o comportamento aprendido.')
+                st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
+                st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f'Erro ao se comunicar com o Gemini: {e}')
