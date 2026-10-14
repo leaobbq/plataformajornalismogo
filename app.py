@@ -58,8 +58,8 @@ with aba_auditoria:
 Ele já possui uma estrutura de notícia excelente, muito semelhante a um press release de tribunal (provavelmente originado da assessoria de comunicação do TJGO). A leitura é clara, os fatos estão bem encadeados e o uso de intertítulos ("Utilidade pública e valor histórico", "Indenização") ajuda a quebrar o texto e facilita a leitura.
 
 No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e acessível possível para o público em geral), há alguns pequenos ajustes de estilo, gramática e eliminação de jargões jurídicos ("juridiquês") que podem deixá-lo ainda melhor."
-
-                pontos_melhoria = """#### **Pontos de atenção e melhoria:**
+                
+                pontos_melhoria = "#### **Pontos de atenção e melhoria:**
 
 * **Uso excessivo de maiúsculas:** No jornalismo, evitamos capitalizar palavras que não sejam nomes próprios. Termos como "Ação Judicial", "Sentença" e "Publicação" devem ser escritos em letras minúsculas.
 
@@ -67,9 +67,9 @@ No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e 
 
 * **Vírgulas desnecessárias:** No trecho "A juíza rejeitou o argumento do Jóquei, de que...", a vírgula antes de "de que" separa o nome do seu complemento nominal e não deve existir.
 
-* **Simplificação de termos:** Expressões como "iniciou a Sentença esclarecendo" podem ser trocadas por algo mais fluido, como "na decisão, a juíza esclareceu"."""
-
-                texto_sugerido = """#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
+* **Simplificação de termos:** Expressões como "iniciou a Sentença esclarecendo" podem ser trocadas por algo mais fluido, como "na decisão, a juíza esclareceu"."
+                
+                texto_sugerido = "#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
 
 A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. O clube pretendia anular o Decreto Municipal nº 2.807/2025, responsável por declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.
 
@@ -91,22 +91,22 @@ A alegação de que o imóvel estaria sendo alvo de um 'confisco disfarçado' po
 
 'Nos termos da Constituição Federal, a desapropriação depende de prévia e justa indenização em dinheiro, exigência que se concretiza na fase subsequente do procedimento expropriatório, seja mediante acordo, seja mediante a competente ação judicial', salientou.
 
-A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."""
+A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."
             else:
                 feedback_resumo = f"Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre **{tema_escolhido}**.
 
 O seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.
 
 Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
-
-                pontos_melhoria = """#### **Pontos de atenção e melhoria:**
+                
+                pontos_melhoria = "#### **Pontos de atenção e melhoria:**
 
 * **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
 
 * **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
 
-* **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."""
-
+* **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."
+                
                 texto_sugerido = f"#### **Sugestão de Novo Texto Recomposto**
 
 {texto_materia}"
