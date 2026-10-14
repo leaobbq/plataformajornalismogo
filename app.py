@@ -37,22 +37,20 @@ st.title('⚖️ Copiloto Editorial Dinâmico')
 st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
 st.markdown('Insira sua matéria para obter uma análise editorial espontânea e uma nova proposta de redação baseada no estado da arte em IA.')
 
-# --- GERENCIAMENTO SEGURO DA API KEY (COM CHAVE PADRÃO EM CASO DE AUSÊNCIA) ---
+# --- GERENCIAMENTO DA API KEY COM CHAVE CORPORATIVA PADRÃO EMBUTIDA ---
 API_KEY_PADRAO = 'AQ.Ab8RN6IYgOtXXCl7HG8kbHaGdsm5GMznBxV6cJ1SGY7J3jChYA'
 API_KEY_FINAL = ""
 
-# 1. Tenta obter dos Secrets nativos do Streamlit Cloud
 if 'GOOGLE_API_KEY' in st.secrets:
     API_KEY_FINAL = st.secrets['GOOGLE_API_KEY']
-# 2. Tenta obter das variáveis de ambiente locais do sistema
 elif os.environ.get('GOOGLE_API_KEY'):
     API_KEY_FINAL = os.environ.get('GOOGLE_API_KEY')
 else:
     API_KEY_FINAL = API_KEY_PADRAO
 
-# Barra lateral apenas informativa e opcional, sem bloquear o fluxo
+# Barra lateral puramente informativa e não obstrutiva
 st.sidebar.header('🔑 Configuração de Acesso')
-st.sidebar.markdown('O copiloto editorial está utilizando uma chave de API corporativa integrada automaticamente. Caso possua uma chave própria e queira substituí-la, insira abaixo:')
+st.sidebar.markdown('O copiloto editorial está utilizando a chave de API corporativa integrada automaticamente.')
 chave_manual = st.sidebar.text_input('Inserir chave de API alternativa (Opcional):', type='password')
 
 if chave_manual.strip():
@@ -69,7 +67,6 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
-# Instruções de Sistema Sênior em formato de concatenação segura por tupla
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
     "diretrizes éticas e de gênero (Manual Universa). "
