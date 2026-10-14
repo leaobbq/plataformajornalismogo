@@ -19,7 +19,7 @@ st.markdown("""<style>
     padding: 24px;
     border-radius: 16px;
     border: 1px solid #d3e3fd;
-    color: #1f1f1f; 
+    color: #1f1f1f;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.7;
 }
@@ -35,29 +35,30 @@ div.stButton > button:first-child {
 
 st.title('⚖️ Copiloto Editorial Dinâmico')
 st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
-st.markdown('Insira sua matéria para obter uma análise editorial personalizada e uma nova proposta de redação baseada no estado da arte em IA.')
+st.markdown('Insira sua matéria para obter uma análise editorial espontânea e uma nova proposta de redação baseada no estado da arte em IA.')
 
-# --- GERENCIAMENTO SEGURO DA API KEY (FALLBACKS) ---
+# --- GERENCIAMENTO SEGURO DA API KEY (COM CHAVE PADRÃO EM CASO DE AUSÊNCIA) ---
+API_KEY_PADRAO = 'AQ.Ab8RN6IYgOtXXCl7HG8kbHaGdsm5GMznBxV6cJ1SGY7J3jChYA'
 API_KEY_FINAL = ""
 
-# 1. Tenta obter dos Secrets nativos do Streamlit Cloud (Recomendado para Deploy)
+# 1. Tenta obter dos Secrets nativos do Streamlit Cloud
 if 'GOOGLE_API_KEY' in st.secrets:
     API_KEY_FINAL = st.secrets['GOOGLE_API_KEY']
 # 2. Tenta obter das variáveis de ambiente locais do sistema
 elif os.environ.get('GOOGLE_API_KEY'):
     API_KEY_FINAL = os.environ.get('GOOGLE_API_KEY')
+else:
+    API_KEY_FINAL = API_KEY_PADRAO
 
-# Permite inserção manual na barra lateral como contingência ou para substituição
+# Barra lateral apenas informativa e opcional, sem bloquear o fluxo
 st.sidebar.header('🔑 Configuração de Acesso')
-chave_manual = st.sidebar.text_input('Insira sua GOOGLE_API_KEY do Gemini:', type='password', help='Sua chave de API fica salva temporariamente na sessão do seu navegador.')
+st.sidebar.markdown('O copiloto editorial está utilizando uma chave de API corporativa integrada automaticamente. Caso possua uma chave própria e queira substituí-la, insira abaixo:')
+chave_manual = st.sidebar.text_input('Inserir chave de API alternativa (Opcional):', type='password')
 
 if chave_manual.strip():
     API_KEY_FINAL = chave_manual.strip()
 
-if not API_KEY_FINAL:
-    st.sidebar.warning('👉 Insira sua GOOGLE_API_KEY acima ou configure-a nos Secrets do Streamlit para ativar o Revisor!')
-else:
-    st.sidebar.success('✅ Conectado ao Gemini!')
+st.sidebar.success('✅ Sistema ativo e pronto para consultas!')
 
 referencias_goias = {
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
@@ -68,7 +69,7 @@ referencias_goias = {
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
 }
 
-# Instruções de Sistema Sênior em formato de concatenação segura por tupla para evitar quebras de linhas físicas
+# Instruções de Sistema Sênior em formato de concatenação segura por tupla
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
     "diretrizes éticas e de gênero (Manual Universa). "
@@ -88,15 +89,13 @@ tema_pauta = st.selectbox(
 )
 
 if tema_pauta in referencias_goias:
-    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {referencias_goias[tema_pauta]}')
+    st.info("📚 **Documentações técnicas e fontes oficiais para apoio:** " + referencias_goias[tema_pauta])
 
 texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o texto para que o Gemini analise e sugira as alterações...', height=220)
 
 if st.button('Revisar com Gemini', type='primary'):
     if not texto_jornalista.strip():
         st.warning('Escreva uma matéria antes de submeter à análise.')
-    elif not API_KEY_FINAL:
-        st.error('❌ GOOGLE_API_KEY não localizada. Certifique-se de inseri-la na barra lateral para habilitar a consulta ao Gemini.')
     else:
         with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback...'):
             try:
@@ -113,6 +112,6 @@ if st.button('Revisar com Gemini', type='primary'):
                 )
 
                 st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
-                st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
+                st.markdown("""<div class="feedback-box">""" + response.text + """</div>""", unsafe_allow_html=True)
             except Exception as e:
-                st.error(f'Erro ao se comunicar com o Gemini: {e}')
+                st.error("Erro ao se comunicar com o Gemini: " + str(e))
