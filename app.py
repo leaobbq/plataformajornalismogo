@@ -91,7 +91,7 @@ if st.button('Revisar com Gemini'):
     if not texto_jornalista.strip():
         st.warning('Escreva uma matéria antes de submeter à análise.')
     elif not API_KEY_FINAL:
-        st.error('❌ GOOGLE_API_KEY não localizada. Certifique-se de digitá-la na barra lateral.')
+        st.error('❌ GOOGLE_API_KEY não localizada. Certifique-se de adicioná-la nos Secrets do Colab ou digitar na barra lateral.')
     else:
         with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback. Aguarde...'):
             try:
