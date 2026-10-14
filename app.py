@@ -10,10 +10,10 @@ st.set_page_config(
 )
 
 st.markdown('''<style>
-.reportview-container {{
+.reportview-container {
     background: #fafafa;
-}}
-.feedback-box {{
+}
+.feedback-box {
     background-color: #f0f4f9;
     padding: 24px;
     border-radius: 16px;
@@ -21,15 +21,15 @@ st.markdown('''<style>
     color: #1f1f1f;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.7;
-}}
-div.stButton > button:first-child {{
+}
+div.stButton > button:first-child {
     background-color: #0b57d0;
     color: white;
     border-radius: 20px;
     padding: 8px 24px;
     font-weight: bold;
     border: none;
-}}
+}
 </style>''', unsafe_allow_html=True)
 
 st.title('⚖️ Copiloto Editorial Dinâmico')
@@ -43,14 +43,14 @@ chave_manual = st.sidebar.text_input('Se preferir, insira uma nova GOOGLE_API_KE
 
 API_KEY_FINAL = chave_manual if chave_manual.strip() else API_KEY_DASHBOARD
 
-referencias_goias = {{
+referencias_goias = {
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
     'Alterações no Projudi': '[Sistemas e Portarias de Indisponibilidade do Projudi](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
     'Precedentes Judiciais': '[Jurisprudência Unificada e Súmulas do TJGO](https://www.tjgo.jus.br/index.php/jurisprudencia)',
     'Saúde Técnica': '[Comitê de Saúde do NATJUS de Goiás](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
     'Tecnologia': '[Estratégia Brasileira de IA (MCTI)](https://www.gov.br/mcti/pt-br) | [Diretrizes de IA na Justiça (CNJ - Resolução 332)](https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/inteligencia-artificial/)',
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
-}}
+}
 
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
@@ -72,7 +72,7 @@ tema_pauta = st.selectbox(
 )
 
 if tema_pauta in referencias_goias:
-    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {{referencias_goias[tema_pauta]}}')
+    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {referencias_goias[tema_pauta]}')
 
 texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o texto para que o Gemini analise e sugira as alterações...', height=220)
 
@@ -81,11 +81,11 @@ if st.button('Revisar com Gemini'):
         st.warning('Escreva uma matéria antes de submeter à análise.')
     elif not API_KEY_FINAL:
         st.error('❌ GOOGLE_API_KEY não localizada. Certifique-se de adicioná-la nos Secrets do Colab ou digitar na barra lateral.')
-    else:
+    else: 
         with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback. Aguarde...'):
             try:
                 client = genai.Client(api_key=API_KEY_FINAL)
-                solicitacao = f"Assunto principal: {{tema_pauta}}\n\nTexto da matéria:\n{{texto_jornalista}}"
+                solicitacao = f"Assunto principal: {tema_pauta}\n\nTexto da matéria:\n{texto_jornalista}"
 
                 response = client.models.generate_content(
                     model='gemini-2.5-flash-lite',
@@ -97,6 +97,6 @@ if st.button('Revisar com Gemini'):
                 )
 
                 st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
-                st.markdown(f'<div class="feedback-box">{{response.text}}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
             except Exception as e:
-                st.error(f'Erro ao se comunicar com o Gemini: {{e}}')
+                st.error(f'Erro ao se comunicar com o Gemini: {e}')
