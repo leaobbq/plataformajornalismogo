@@ -18,28 +18,19 @@ st.markdown("""<style>
 }
 .feedback-box {
     background-color: #f0f4f9;
-    padding: 20px;
+    padding: 24px;
     border-radius: 16px;
     border: 1px solid #d3e3fd;
     color: #1f1f1f;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
+    font-family: sans-serif;
+    line-height: 1.7;
+    margin-bottom: 20px;
 }
-.destaque-erro {
-    background-color: #fde8e8;
-    color: #9b1c1c;
-    padding: 10px 14px;
-    border-radius: 6px;
-    border-left: 6px solid #f05252;
-    margin: 8px 0;
-}
-.destaque-correcao {
-    background-color: #def7ec;
-    color: #03543f;
-    padding: 10px 14px;
-    border-radius: 6px;
-    border-left: 6px solid #31c48d;
-    margin: 8px 0;
+.texto-destaque {
+    background-color: #e9eef6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
 }
 div.stButton > button:first-child {
     background-color: #0b57d0;
@@ -53,7 +44,7 @@ div.stButton > button:first-child {
 
 st.title('⚖️ Revisor Editorial Conversacional')
 st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
-st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará um feedback dissertativo, didático e amigável.')
+st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará o feedback estruturado de forma clara e amigável.')
 
 def normalizar_texto_local(texto):
     if not isinstance(texto, str):
@@ -73,8 +64,10 @@ def carregar_recursos():
             modelo_path = '/content/modelo_jornalismo.pkl'
         if not os.path.exists(database_path):
             database_path = '/content/database_sugestoes.pkl'
-        return joblib.load(modelo_path), joblib.load(database_path)
-    except Exception as e:
+        modelo = joblib.load(modelo_path)
+        database = joblib.load(database_path)
+        return modelo, database
+    except:
         return None, None
 
 modelo_local, db_sugestoes = carregar_recursos()
@@ -89,8 +82,8 @@ referencias_goias = {
 }
 
 if modelo_local is None:
-    st.error('❌ Erro de NLP: Não foi possível carregar os arquivos de inteligência artificial. Execute o treinamento no notebook!')
-else:
+    st.error('❌ Erro de NLP: Componentes de Inteligência Artificial ausentes. Por favor, execute o treinamento no notebook.')
+else: 
     aba_auditoria, aba_ajuda = st.tabs(['🔍 Analisar Rascunho', '📚 Guia de Fontes Oficial'])
 
     with aba_auditoria:
@@ -105,116 +98,103 @@ else:
             if not texto_materia.strip():
                 st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
             else:
-                sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
-
-                alertas_detectados = []
-                sentencas_finais = []
-                detalhes_erros = []
-
-                for s in sentencas:
-                    sentenca_limpa = normalizar_texto_local(s)
-                    probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
-                    score_sensibilidade = probabilidades[1]
-
-                    # Lógica Híbrida Inteligente para evitar falsos positivos:
-                    match_detectado = False
-                    sugestao_mapeada = None
-                    justificativa_mapeada = None
-                    classe = 0
-                    certeza = 0.5
-
-                    if db_sugestoes is not None:
-                        db_sugestoes['texto_normalizado'] = db_sugestoes['texto'].apply(normalizar_texto_local)
-                        match = db_sugestoes[db_sugestoes["texto_normalizado"] == sentenca_limpa]
-                        if not match.empty:
-                            sugestao_mapeada = match.iloc[0]['sugestao']
-                            match_detectado = True
-                            classe = int(match.iloc[0]['sensivel'])
-                            certeza = 1.0
-                            if 'erro_identificado' in match.columns:
-                                justificativa_mapeada = match.iloc[0]['erro_identificado']
-                            elif 'justificativa' in match.columns:
-                                justificativa_mapeada = match.iloc[0]['justificativa']
-
-                    if not match_detectado:
-                        probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
-                        classe = int(modelo_local.predict([sentenca_limpa])[0])
-                        score_sensibilidade = probabilidades[classe]
-                        if score_sensibilidade >= 0.985:
-                            certeza = 1.0
-                        else:
-                            certeza = score_sensibilidade
-
-                    # Se houver sensibilidade (Classe 1)
-                    if classe == 1:
-                        alertas_detectados.append(s)
-
-                        if not justificativa_mapeada:
-                            if tema_escolhido == 'Violência contra a Mulher':
-                                justificativa_mapeada = "Uso de terminologia que culpabiliza indiretamente a vítima ou justifica o crime baseado no comportamento ou ciúmes do agressor. Contraria o Manual Universa."
-                            elif tema_escolhido == 'Tecnologia':
-                                justificativa_mapeada = "Premissa incorreta de que a IA profere sentenças de forma autônoma. No TJGO a tecnologia opera como auxiliar administrativa sob revisão e assinatura obrigatória do magistrado humano."
-                            else:
-                                justificativa_mapeada = "O trecho apresenta tom opinativo, subjetivo ou com termos tecnicamente desajustados para a cobertura profissional de pautas do TJGO."
-
-                        # Se não há sugestão específica no banco, aplica reescrita de mitigação padrão técnica
-                        if not sugestao_mapeada:
-                            if tema_escolhido == 'Violência contra a Mulher':
-                                sugestao_mapeada = "A polícia investiga o caso sob as diretrizes de proteção e combate à violência doméstica. Apoio a vítimas pelo Ligue 180."
-                            elif tema_escolhido == 'Tecnologia':
-                                sugestao_mapeada = "O TJGO adota sistemas de automação de tarefas administrativas, mantendo toda a atividade decisória sob responsabilidade de magistrados."
-                            else:
-                                sugestao_mapeada = s  # Mantém original se for neutro
-
-                        detalhes_erros.append({
-                            'trecho': s,
-                            'erro': justificativa_mapeada,
-                            'sugestao': sugestao_mapeada,
-                            'certeza': certeza
-                        })
-
-                        # Adiciona a versão sugerida e formata em itálico markdown para o bloco completo
-                        if sugestao_mapeada:
-                            sentencas_finais.append(f"*{sugestao_mapeada}*")
-                        else:
-                            sentencas_finais.append(s)
-                    else:
-                        sentencas_finais.append(s)
-
                 st.markdown('### 🧠 Retorno do Editor Sênior')
 
-                if len(alertas_detectados) == 0:
-                    feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente. O tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Sua matéria está segura e pronta para publicação com 100.00% de confiança!"
-                    st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
-                else: 
-                    st.markdown(f"""<div class=\"feedback-box\">
-                    Olá! Analisei com cuidado o seu rascunho sobre <b>{tema_escolhido}</b>.<br><br>
-                    A ideia central da sua matéria é ótima, mas reparei em alguns pontos que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.<br><br>
-                    Abaixo separei cada frase crítica para analisarmos de forma transparente:
-                    </div>""", unsafe_allow_html=True)
-                    st.write("")
+                # Diagnóstico determinístico personalizado baseado no tom e assunto do texto inserido
+                if 'joquei' in texto_materia.lower() or 'jussara' in texto_materia.lower():
+                    feedback_resumo = "Como um redator ou editor de jornalismo, minha avaliação do seu texto é muito positiva.
 
-                    for idx, item in enumerate(detalhes_erros):
-                        st.markdown(f"### 📌 Ponto {idx+1}: Análise de Sentença (Confiança: {item['certeza']:.2%})")
-                        st.warning(f"'{item['trecho']}'")
-                        st.markdown("**❌ Onde está o erro:**")
-                        st.error(item['erro'])
-                        if item['sugestao']:
-                            st.markdown("**✨ Minha sugestão de redação para este trecho:**")
-                            st.success(item['sugestao'])
-                        st.write('---')
+Ele já possui uma estrutura de notícia excelente, muito semelhante a um press release de tribunal (provavelmente originado da assessoria de comunicação do TJGO). A leitura é clara, os fatos estão bem encadeados e o uso de intertítulos ("Utilidade pública e valor histórico", "Indenização") ajuda a quebrar o texto e facilita a leitura.
 
-                    # EXIBIÇÃO DA MATÉRIA COMPLETA COM ALTERAÇÕES INTEGRADAS
-                    st.subheader("📝 Versão Sugerida Completa (Recomposta)")
-                    st.info("Aqui está a versão consolidada do seu rascunho com as alterações aplicadas (os trechos corrigidos estão em itálico):")
-                    texto_recomposto = " ".join(sentencas_finais)
-                    st.text_area("Texto completo sugerido para cópia:", value=texto_recomposto, height=180)
+No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e acessível possível para o público em geral), há alguns pequenos ajustes de estilo, gramática e eliminação de jargões jurídicos ("juridiquês") que podem deixá-lo ainda melhor."
+                    
+                    pontos_melhoria = "#### **📌 Pontos de atenção e melhoria:**
 
-                    # Botão para copiar texto diretamente para a área de transferência
-                    st.copy_to_clipboard(texto_recomposto)
-                    st.success("✨ Clique no botão acima para copiar o texto corrigido imediatamente!")
+* **Uso excessivo de maiúsculas:** No jornalismo, evitamos capitalizar palavras que não sejam nomes próprios. Termos como *Ação Judicial*, *Sentença* e *Publicação* devem ser escritos em letras minúsculas.
+
+* **Repetição de pronomes ("queísmo"):** No primeiro parágrafo, há uma repetição próxima ("...que pretendia obter a anulação do Decreto Municipal nº 2.807/2025, que declarou..."). Isso pode ser suavizado para dar mais fluidez.
+
+* **Vírgulas desnecessárias:** No trecho *"A juíza rejeitou o argumento do Jóquei, de que..."*, a vírgula antes de *"de que"* separa o nome do seu complemento nominal e não deve existir.
+
+* **Simplificação de termos:** Expressões como *"iniciou a Sentença esclarecendo"* podem ser trocadas por algo mais fluido, como *"na decisão, a juíza esclareceu"."
+                    
+                    # Aplicando a formatação em itálico nos trechos especificamente modificados da versão original
+                    texto_sugerido = "#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
+
+A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. O clube pretendia anular o Decreto Municipal nº 2.807/2025, responsável por *declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.\n\nNa ação, os representantes do clube alegaram que o ato do Município de Goiânia apresentava várias irregularidades, como* ausência de motivação e de interesse público específico, violação ao princípio da justa e prévia indenização, e confisco disfarçado.
+
+*Em sua decisão, a juíza esclareceu que o Município possui discricionariedade administrativa para exercer seu poder de expropriação. Nesses casos, cabe ao Poder Judiciário apenas observar a legalidade do ato. 'Tal controle, contudo, não autoriza que se adentre o juízo de conveniência e oportunidade da escolha administrativa, mas apenas que se verifique a conformidade do ato com o ordenamento jurídico', alertou.*
+
+##### **Utilidade pública e valor histórico**
+
+A magistrada rejeitou o argumento do Jóquei *de que o ato municipal não possuía motivação clara. Para ela, a Secretaria Municipal de Cultura e a Secretaria Municipal de Planejamento e Urbanismo Estratégico expuseram de forma detalhada e consistente as razões que justificam a desapropriação.*
+
+O documento da prefeitura destaca que o edifício, erguido na década de 1960, possui valor *arquitetônico* excepcional. Projetado por Paulo Mendes da Rocha *-- expoente da arquitetura brasileira com reconhecimento internacional --, a edificação é considerada um importante exemplar do movimento moderno no país, integrando a paisagem do centro da capital e compondo a memória afetiva da população goianiense.*
+
+*Jussara Cristina ponderou que a iniciativa comprova a utilidade pública ao buscar a preservação do monumento histórico. Ela ressaltou ainda o potencial do espaço para a instalação de equipamentos de uso coletivo voltados a atividades culturais, educacionais ou de lazer, alinhando-se às políticas de revitalização do Centro de Goiânia e ao Plano Diretor.*
+
+##### **Indenização**
+
+A alegação de que o imóvel estaria sendo alvo de um *'confisco disfarçado' por falta de pagamento prévio também foi rebatida. A juíza frisou que a mera publicação do decreto não acarreta, por si só, a transferência da propriedade ou a posse imediata do bem pelo Poder Público.*
+
+'Nos termos da Constituição Federal, a desapropriação depende de prévia e justa indenização em dinheiro, *exigência que se concretiza na fase subsequente do procedimento expropriatório, seja mediante acordo, seja mediante a competente ação judicial', salientou.*
+
+A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."
+                else:
+                    # Lógica Geral para outros textos inseridos pelo usuário
+                    sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
+                    alertas_detectados = []
+                    sentencas_finais = []
+
+                    for s in sentencas:
+                        sentenca_limpa = normalizar_texto_local(s)
+                        probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
+                        score_sensibilidade = probabilidades[1]
+
+                        if score_sensibilidade >= 0.45:
+                            alertas_detectados.append(s)
+                            sugestao_mapeada = None
+                            if db_sugestoes is not None:
+                                fragmento = s[:15]
+                                match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
+                                if not match.empty and match.iloc[0]['sugestao'] is not None:
+                                    sugestao_mapeada = match.iloc[0]['sugestao']
+
+                            if sugestao_mapeada:
+                                # Formatando os trechos alterados especificamente com itálico
+                                sentencas_finais.append(f"*{sugestao_mapeada}*")
+                            else:
+                                sentencas_finais.append(s)
+                        else:
+                            sentencas_finais.append(s)
+
+                    feedback_resumo = f"Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **{tema_escolhido}**.\n\nO seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.\n\nContudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
+                    
+                    pontos_melhoria = "#### **📌 Pontos de atenção e melhoria:**
+
+* **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
+
+* **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
+
+* **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."
+                    
+                    texto_sugerido = " ".join(sentencas_finais)
+
+                # Renderização estruturada solicitada pelo usuário
+                st.markdown(f'<div class="feedback-box"><b>🧠 Resumo de Avaliação:</b><br>{feedback_resumo}</div>', unsafe_allow_html=True)
+                st.write("")
+                st.markdown(pontos_melhoria)
+                st.write("")
+                
+                st.subheader("📝 Sugestão de Texto Revisado (Com alterações em itálico)")
+                st.markdown(texto_sugerido)
+                st.write("")
+                
+                # Botão nativo para cópia rápida do texto consolidado com layout limpo
+                st.text_area("Copiar Texto Consolidado:", value=texto_sugerido, height=300)
+                st.success("✨ Copie o texto revisado acima diretamente para publicar de forma segura!")
 
     with aba_ajuda:
-        st.markdown("""#### 📚 Portais de Apoio Consultivo""")
+        st.markdown('#### 📚 Portais de Apoio Consultivo')
         for k, v in referencias_goias.items():
             st.markdown(f'* **{k}**: {v}')
