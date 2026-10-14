@@ -57,6 +57,7 @@ referencias_goias = {{
 }}
 
 # Instruções de Sistema Sênior para modelar o comportamento do Gemini de forma didática e isenta
+# Corrigido contra erros de literais multilaterais no Streamlit Cloud
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
     "diretrizes éticas e de gênero (Manual Universa).
@@ -85,7 +86,7 @@ tema_pauta = st.selectbox(
 if tema_pauta in referencias_goias:
     st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {{referencias_goias[tema_pauta]}}')
 
-texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o text para que o Gemini analise e sugira as alterações...', height=220)
+texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o texto para que o Gemini analise e sugira as alterações...', height=220)
 
 if st.button('Revisar com Gemini'):
     if not texto_jornalista.strip():
