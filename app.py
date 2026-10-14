@@ -93,11 +93,12 @@ A alegação de que o imóvel estaria sendo alvo de um *'confisco disfarçado' p
 
 A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."""
             else:
-                feedback_resumo = f"Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **{tema_escolhido}**.
+                feedback_resumo = f"""Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **{tema_escolhido}**.
 
 O seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.
 
-Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
+Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."""
+
                 pontos_melhoria = """#### **📌 Pontos de atenção e melhoria:**
 
 * **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
@@ -105,7 +106,7 @@ Contudo, sob a ótica do jornalismo profissional diário focado no grande públi
 * **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
 
 * **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."""
-                texto_sugerido = f"{texto_materia}"
+                texto_sugerido = f"""{texto_materia}"""
 
             # Renderização na UI do Streamlit
             st.markdown(f'<div class="feedback-box"><b>🧠 Resumo de Avaliação:</b><br>{feedback_resumo}</div>', unsafe_allow_html=True)
