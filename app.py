@@ -31,7 +31,7 @@ div.stButton > button:first-child {
     font-weight: bold;
     border: none;
 }
-</style>""", unsafe_allow_html=True)
+</style>""", unsafe_allow_html=True) 
 
 st.title('⚖️ Copiloto Editorial Dinâmico')
 st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
@@ -70,21 +70,15 @@ referencias_goias = {
 
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
-    "diretrizes éticas e de gênero (Manual Universa).
-"
-    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas.
-
-"
-    "Instruções de conduta:
-"
+    "diretrizes éticas e de gênero (Manual Universa). "
+    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas. "
+    "Instruções de conduta: "
     "1. Avalie o tom e a isenção de forma dissertativa. Se o texto estiver neutro, técnico, correto e justo "
     "(como um comunicado oficial ou uma decisão da Justiça como o caso do Jóquei Clube ou sentenças formais), "
-    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator.
-"
+    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator. "
     "2. Se houver desvios, identifique os trechos exatos (sensacionalismo, opinião sem fatos, termos desatualizados, "
     "suposições de dolo contra instituições ou culpabilização de vítimas). Critique de forma construtiva e didática, "
-    "explicando qual princípio de redação jornalística ou norma jurídica foi violado.
-"
+    "explica o princípio de redação violado. "
     "3. Forneça sempre uma proposta de reescrita polida, objetiva, fluida e de tom neutro que mantém os fatos reais intactos."
 )
 
@@ -107,10 +101,7 @@ if st.button('Revisar com Gemini', type='primary'):
         with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback...'):
             try:
                 client = genai.Client(api_key=API_KEY_FINAL)
-                solicitacao = "Assunto principal: " + str(tema_pauta) + "
-
-Texto da matéria:
-" + str(texto_jornalista)
+                solicitacao = "Assunto principal: " + str(tema_pauta) + "\n\nTexto da matéria:\n" + str(texto_jornalista)
 
                 response = client.models.generate_content(
                     model='gemini-2.5-flash-lite',
@@ -122,6 +113,6 @@ Texto da matéria:
                 )
 
                 st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
-                st.markdown("""<div class="feedback-box">""" + response.text + """</div>""", unsafe_allow_html=True)
+                st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
             except Exception as e:
                 st.error("Erro ao se comunicar com o Gemini: " + str(e))
