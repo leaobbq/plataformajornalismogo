@@ -26,6 +26,32 @@ st.title('⚖️ Revisor Editorial Conversacional')
 st.markdown('### Uma conversa de redator para redator, inspirada no Gemini')
 st.markdown('Escreva o rascunho da sua pauta jurídica ou geral. O assistente analisará o contexto completo e trará o feedback estruturado de forma clara e amigável.')
 
+def normalizar_texto_local(texto):
+    if not isinstance(texto, str):
+        return ""
+    texto = texto.lower()
+    texto = "".join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    texto = re.sub(r'[^a-zA-Z0-9\s]', ' ', texto)
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    return texto
+
+@st.cache_resource
+def carregar_recursos():
+    try:
+        modelo_path = 'modelo_jornalismo.pkl'
+        database_path = 'database_sugestoes.pkl'
+        if not os.path.exists(modelo_path):
+            modelo_path = '/content/modelo_jornalismo.pkl'
+        if not os.path.exists(database_path):
+            database_path = '/content/database_sugestoes.pkl'
+        modelo = joblib.load(modelo_path)
+        database = joblib.load(database_path)
+        return modelo, database
+    except Exception as e:
+        return None, None
+
+modelo_local, db_sugestoes = carregar_recursos()
+
 referencias_goias = {
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
     'Alterações no Projudi': '[Sistemas e Portarias de Indisponibilidade do Projudi](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
@@ -48,7 +74,7 @@ with aba_auditoria:
     if st.button('Revisar com o Copiloto'):
         if not texto_materia.strip():
             st.warning('Por favor, escreva algum rascunho de texto antes de prosseguir.')
-        else:
+        else: 
             st.markdown('### 🧠 Retorno do Editor Sênior')
 
             # Diagnóstico determinístico personalizado baseado no tom e assunto do texto inserido
@@ -71,9 +97,9 @@ No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e 
 
                 texto_sugerido = """#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
 
-A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. O clube pretendia anular o Decreto Municipal nº 2.807/2025, responsável por *declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.
+A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. *O clube pretendia anular o Decreto Municipal nº 2.807/2025, responsável por declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.*
 
-Na ação, os representantes do clube alegaram que o ato do Município de Goiânia apresentava várias irregularidades, como* ausência de motivação e de interesse público específico, violação ao princípio da justa e prévia indenização, e confisco disfarçado.
+*Na ação, os representantes do clube alegaram que o ato do Município de Goiânia apresentava várias irregularidades, como* ausência de motivação e de interesse público específico, violação ao princípio da justa e prévia indenização, e confisco disfarçado.
 
 *Em sua decisão, a juíza esclareceu que o Município possui discricionariedade administrativa para exercer seu poder de expropriação. Nesses casos, cabe ao Poder Judiciário apenas observar a legalidade do ato. 'Tal controle, contudo, não autoriza que se adentre o juízo de conveniência e oportunidade da escolha administrativa, mas apenas que se verifique a conformidade do ato com o ordenamento jurídico', alertou.*
 
@@ -93,12 +119,34 @@ A alegação de que o imóvel estaria sendo alvo de um *'confisco disfarçado' p
 
 A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."""
             else:
-                feedback_resumo = f"""Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **{tema_escolhido}**.
+                # Tratamento de Fluxo Geral / Outros assuntos usando o Modelo Estatístico Local
+                sentencas = [s.strip() for s in re.split(r"(?<=[.!?])\s+", texto_materia) if len(s.strip()) > 4]
+                alertas_detectados = []
+                sentencas_finais = []
 
-O seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.
+                for s in sentencas:
+                    sentenca_limpa = normalizar_texto_local(s)
+                    probabilidades = modelo_local.predict_proba([sentenca_limpa])[0]
+                    score_sensibilidade = probabilidades[1]
 
-Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."""
+                    if score_sensibilidade >= 0.45:
+                        alertas_detectados.append(s)
+                        sugestao_mapeada = None
+                        if db_sugestoes is not None:
+                            fragmento = s[:15]
+                            match = db_sugestoes[db_sugestoes["texto"].str.contains(re.escape(fragmento), na=False, case=False)]
+                            if not match.empty and match.iloc[0]['sugestao'] is not None:
+                                sugestao_mapeada = match.iloc[0]['sugestao']
 
+                        if sugestao_mapeada:
+                            # Formata as sentenças modificadas de forma explícita com asteriscos (itálico)
+                            sentencas_finais.append(f"*{sugestao_mapeada}*")
+                        else:
+                            sentencas_finais.append(s)
+                    else:
+                        sentencas_finais.append(s)
+
+                feedback_resumo = f"Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto **{tema_escolhido}**.\n\nO seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.\n\nContudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
                 pontos_melhoria = """#### **📌 Pontos de atenção e melhoria:**
 
 * **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
@@ -106,7 +154,7 @@ Contudo, sob a ótica do jornalismo profissional diário focado no grande públi
 * **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
 
 * **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."""
-                texto_sugerido = f"""{texto_materia}"""
+                texto_sugerido = " ".join(sentencas_finais)
 
             # Renderização na UI do Streamlit
             st.markdown(f'<div class="feedback-box"><b>🧠 Resumo de Avaliação:</b><br>{feedback_resumo}</div>', unsafe_allow_html=True)
@@ -116,8 +164,10 @@ Contudo, sob a ótica do jornalismo profissional diário focado no grande públi
             st.subheader("📝 Sugestão de Texto Revisado (Com alterações em itálico)")
             st.markdown(texto_sugerido)
             st.write("")
+            
+            # Caixa de texto de área ampla para visualização consolidada com botão nativo de cópia integrado na barra superior direita
             st.text_area("Copiar Texto Consolidado:", value=texto_sugerido, height=350)
-            st.success("✨ Copie o texto revisado acima diretamente para publicar de forma segura!")
+            st.success("✨ Copie o texto revisado acima diretamente usando o ícone de cópia rápida para publicar de forma segura!")
 
 with aba_ajuda:
     st.markdown("#### 📚 Portais de Apoio Consultivo")
