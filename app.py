@@ -13,11 +13,11 @@ st.set_page_config(
 
 # Estilização CSS limpa e moderna integrada de forma segura
 st.markdown(
-    '<style>' 
-    '.reportview-container { background: #fafafa; } ' 
-    '.feedback-box { background-color: #f0f4f9; padding: 24px; border-radius: 16px; border: 1px solid #d3e3fd; color: #1f1f1f; font-family: sans-serif; line-height: 1.6; } ' 
-    '.texto-destaque { background-color: #e9eef6; padding: 2px 6px; border-radius: 4px; font-family: monospace; } ' 
-    'div.stButton > button:first-child { background-color: #0b57d0; color: white; border-radius: 20px; padding: 8px 24px; font-weight: bold; border: none; }' 
+    '<style>'
+    '.reportview-container { background: #fafafa; } '
+    '.feedback-box { background-color: #f0f4f9; padding: 24px; border-radius: 16px; border: 1px solid #d3e3fd; color: #1f1f1f; font-family: sans-serif; line-height: 1.6; } '
+    '.texto-destaque { background-color: #e9eef6; padding: 2px 6px; border-radius: 4px; font-family: monospace; } '
+    'div.stButton > button:first-child { background-color: #0b57d0; color: white; border-radius: 20px; padding: 8px 24px; font-weight: bold; border: none; }'
     '</style>',
     unsafe_allow_html=True
 )
@@ -58,7 +58,7 @@ with aba_auditoria:
 Ele já possui uma estrutura de notícia excelente, muito semelhante a um press release de tribunal (provavelmente originado da assessoria de comunicação do TJGO). A leitura é clara, os fatos estão bem encadeados e o uso de intertítulos ("Utilidade pública e valor histórico", "Indenização") ajuda a quebrar o texto e facilita a leitura.
 
 No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e acessível possível para o público em geral), há alguns pequenos ajustes de estilo, gramática e eliminação de jargões jurídicos ("juridiquês") que podem deixá-lo ainda melhor."
-                
+
                 pontos_melhoria = "#### **Pontos de atenção e melhoria:**
 
 * **Uso excessivo de maiúsculas:** No jornalismo, evitamos capitalizar palavras que não sejam nomes próprios. Termos como "Ação Judicial", "Sentença" e "Publicação" devem ser escritos em letras minúsculas.
@@ -68,7 +68,7 @@ No entanto, para o padrão do jornalismo diário (que busca ser o mais direto e 
 * **Vírgulas desnecessárias:** No trecho "A juíza rejeitou o argumento do Jóquei, de que...", a vírgula antes de "de que" separa o nome do seu complemento nominal e não deve existir.
 
 * **Simplificação de termos:** Expressões como "iniciou a Sentença esclarecendo" podem ser trocadas por algo mais fluido, como "na decisão, a juíza esclareceu"."
-                
+
                 texto_sugerido = "#### **Juíza mantém validade de decreto que desapropria antigo Jóquei Clube em Goiânia** *(Sugestão de título)*
 
 A juíza Jussara Cristina Oliveira Louza, titular da 3ª Vara da Fazenda Pública Municipal e Registros Públicos de Goiânia, julgou improcedente a ação judicial proposta pelo Jóquei Clube de Goiás. O clube pretendia anular o Decreto Municipal nº 2.807/2025, responsável por declarar de utilidade pública, para fins de desapropriação, os imóveis onde se localiza a antiga sede.
@@ -93,12 +93,12 @@ A alegação de que o imóvel estaria sendo alvo de um 'confisco disfarçado' po
 
 A magistrada lembrou que o decreto é apenas um ato preparatório e destacou que o próprio texto normativo municipal já prevê a garantia de recursos no orçamento da prefeitura para o pagamento da justa indenização no momento adequado."
             else:
-                feedback_resumo = f"Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre **{tema_escolhido}**.
+                feedback_resumo = "Olá! Como um redator ou editor de redação, analisei com cuidado o rascunho enviado sobre o assunto.
 
 O seu texto possui excelente nível de clareza, encadeia bem os fatos do tribunal e já mimetiza o padrão de informativos oficiais.
 
 Contudo, sob a ótica do jornalismo profissional diário focado no grande público, podemos limar pequenos jargões e simplificar construções."
-                
+
                 pontos_melhoria = "#### **Pontos de atenção e melhoria:**
 
 * **Eliminação de Jargões (Juridiquês):** Prefira substituir vocábulos muito específicos por opções acessíveis e dinâmicas.
@@ -106,10 +106,8 @@ Contudo, sob a ótica do jornalismo profissional diário focado no grande públi
 * **Clareza de Estrutura:** Evite o encadeamento excessivo de ideias em períodos longos para prezar pela objetividade diária.
 
 * **Imparcialidade Factual:** Certifique-se de fundamentar as afirmações em decisões institucionais oficiais registradas pelo TJGO."
-                
-                texto_sugerido = f"#### **Sugestão de Novo Texto Recomposto**
 
-{texto_materia}"
+                texto_sugerido = f"#### **Sugestão de Novo Texto Recomposto**\n\n{texto_materia}"
 
             # Renderização na UI do Streamlit
             st.markdown(f'<div class="feedback-box">{feedback_resumo}</div>', unsafe_allow_html=True)
