@@ -187,7 +187,7 @@ else:
                     feedback_texto = f"Olá! Li o seu texto com bastante atenção e achei a estrutura excelente. O tom adotado para tratar sobre **{tema_escolhido}** está perfeitamente neutro, técnico e isento. Sua matéria está segura e pronta para publicação com 100.00% de confiança!"
                     st.markdown(f'<div class="feedback-box">{feedback_texto}</div>', unsafe_allow_html=True)
                 else: 
-                    st.markdown(f"""<div class="feedback-box">
+                    st.markdown(f"""<div class=\"feedback-box\">
                     Olá! Analisei com cuidado o seu rascunho sobre <b>{tema_escolhido}</b>.<br><br>
                     A ideia central da sua matéria é ótima, mas reparei em alguns pontos que nós, como jornalistas, precisamos tomar cuidado para evitar repercussões negativas ou desvios em relação aos manuais éticos e técnicos.<br><br>
                     Abaixo separei cada frase crítica para analisarmos de forma transparente:
@@ -196,7 +196,7 @@ else:
 
                     for idx, item in enumerate(detalhes_erros):
                         st.markdown(f"### 📌 Ponto {idx+1}: Análise de Sentença (Confiança: {item['certeza']:.2%})")
-                        st.warning(f""{item['trecho']}"")
+                        st.warning(f"'{item['trecho']}'")
                         st.markdown("**❌ Onde está o erro:**")
                         st.error(item['erro'])
                         if item['sugestao']:
@@ -209,7 +209,7 @@ else:
                     st.info("Aqui está a versão consolidada do seu rascunho com as alterações aplicadas (os trechos corrigidos estão em itálico):")
                     texto_recomposto = " ".join(sentencas_finais)
                     st.text_area("Texto completo sugerido para cópia:", value=texto_recomposto, height=180)
-                    
+
                     # Botão para copiar texto diretamente para a área de transferência
                     st.copy_to_clipboard(texto_recomposto)
                     st.success("✨ Clique no botão acima para copiar o texto corrigido imediatamente!")
