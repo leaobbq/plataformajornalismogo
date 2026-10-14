@@ -37,36 +37,30 @@ st.title('⚖️ Copiloto Editorial Dinâmico')
 st.markdown('### Revisão analítica, crítica e estilística em tempo real com o Google Gemini')
 st.markdown('Insira sua matéria para obter uma análise editorial espontânea e uma nova proposta de redação baseada no estado da arte em IA.')
 
-# Chave de API integrada diretamente via código conforme solicitado
+# Chave de API integrada diretamente de forma fixa conforme solicitado
 API_KEY_FINAL = 'AQ.Ab8RN6IYgOtXXCl7HG8kbHaGdsm5GMznBxV6cJ1SGY7J3jChYA'
 
-referencias_goias = {
+referencias_goias = {{
     'Precatórios': '[Portal de Precatórios Oficiais do TJGO](https://www.tjgo.jus.br/index.php/precatorios)',
     'Alterações no Projudi': '[Sistemas e Portarias de Indisponibilidade do Projudi](https://www.tjgo.jus.br/index.php/sistemas-e-informacoes)',
     'Precedentes Judiciais': '[Jurisprudência Unificada e Súmulas do TJGO](https://www.tjgo.jus.br/index.php/jurisprudencia)',
     'Saúde Técnica': '[Comitê de Saúde do NATJUS de Goiás](https://www.tjgo.jus.br/index.php/comites-e-comissoes/saude)',
     'Tecnologia': '[Estratégia Brasileira de IA (MCTI)](https://www.gov.br/mcti/pt-br) | [Diretrizes de IA na Justiça (CNJ - Resolução 332)](https://www.cnj.jus.br/tecnologia-da-informacao-e-comunicacao/inteligencia-artificial/)',
     'Violência contra a Mulher': '[Coordenadoria da Mulher em Situação de Violência Doméstica do TJGO](https://www.tjgo.jus.br/index.php/comites-e-comissoes/coordenadoria-da-mulher)'
-}
+}}
 
-# Instruções de Sistema Sênior para modelar o comportamento do Gemini
+# Instruções de Sistema Sênior em formato de concatenação segura de tupla sem quebras físicas
 prompt_sistema_editorial = (
     "Você é um Revisor Crítico de Jornalismo e Editor Sênior voltado para coberturas institucionais jurídicas, "
-    "diretrizes éticas e de gênero (Manual Universa).
-"
-    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas.
-
-"
-    "Instruções de conduta:
-"
+    "diretrizes éticas e de gênero (Manual Universa). "
+    "Sua função é analisar o rascunho de texto enviado de forma dinâmica e construtiva, sem usar respostas fixas. "
+    "Instruções de conduta: "
     "1. Avalie o tom e a isenção de forma dissertativa. Se o texto estiver neutro, técnico, correto e justo "
     "(como um comunicado oficial ou uma decisão da Justiça como o caso do Jóquei Clube ou sentenças formais), "
-    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator.
-"
+    "reconheça isso explicitamente e faça um elogio sincero ao estilo profissional do redator. "
     "2. Se houver desvios, identifique os trechos exatos (sensacionalismo, opinião sem fatos, termos desatualizados, "
     "suposições de dolo contra instituições ou culpabilização de vítimas). Critique de forma construtiva e didática, "
-    "explicando qual princípio de redação jornalística ou norma jurídica foi violado.
-"
+    "explicando qual princípio de redação jornalística ou norma jurídica foi violado. "
     "3. Forneça sempre uma proposta de reescrita polida, objetiva, fluida e de tom neutro que mantém os fatos reais intactos."
 )
 
@@ -76,9 +70,9 @@ tema_pauta = st.selectbox(
 )
 
 if tema_pauta in referencias_goias:
-    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {referencias_goias[tema_pauta]}')
+    st.info(f'📚 **Documentações técnicas e fontes oficiais para apoio:** {{referencias_goias[tema_pauta]}}')
 
-texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o texto para que o Gemini analise e sugira as alterações...', height=220)
+texto_jornalista = st.text_area('Insira o rascunho da sua matéria:', placeholder='Cole ou escreva o text para que o Gemini analise e sugira as alterações...', height=220)
 
 if st.button('Revisar com Gemini'):
     if not texto_jornalista.strip():
@@ -87,10 +81,10 @@ if st.button('Revisar com Gemini'):
         with st.spinner('O Gemini está lendo, analisando e estruturando o seu feedback. Aguarde...'):
             try:
                 client = genai.Client(api_key=API_KEY_FINAL)
-                solicitacao = f"Assunto principal: {tema_pauta}
+                solicitacao = f"Assunto principal: {{tema_pauta}}
 
 Texto da matéria:
-{texto_jornalista}"
+{{texto_jornalista}}"
 
                 response = client.models.generate_content(
                     model='gemini-2.5-flash-lite',
@@ -102,6 +96,6 @@ Texto da matéria:
                 )
 
                 st.markdown('### 🧠 Retorno do Editor Sênior (Gemini)')
-                st.markdown(f'<div class="feedback-box">{response.text}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="feedback-box">{{response.text}}</div>', unsafe_allow_html=True)
             except Exception as e:
-                st.error(f'Erro ao se comunicar com o Gemini: {e}')
+                st.error(f'Erro ao se comunicar com o Gemini: {{e}}')
